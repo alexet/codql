@@ -10,7 +10,7 @@ string realInput() {
 }
 
 module Impl<inStr/0 input> {
-  int elves(int i, int j) { result = input().splitAt("\n\n", i).splitAt("\n", j).toInt() }
+  int elves(int i, int j) { result = Helpers<input/0>::groupedLines(i, j).toInt() }
 
   int elfTotal(int i) { result = strictsum(int j | | elves(i, j)) }
 
