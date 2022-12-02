@@ -1,58 +1,28 @@
-int resultScore(string lhs, string rhs) {
-  lhs = "A" and rhs = "A" and result = 1
-  or
-  lhs = "A" and rhs = "B" and result = 2
-  or
-  lhs = "A" and rhs = "C" and result = 0
-  or
-  lhs = "B" and rhs = "A" and result = 0
-  or
-  lhs = "B" and rhs = "B" and result = 1
-  or
-  lhs = "B" and rhs = "C" and result = 2
-  or
-  lhs = "C" and rhs = "A" and result = 2
-  or
-  lhs = "C" and rhs = "B" and result = 0
-  or
-  lhs = "C" and rhs = "C" and result = 1
+int resultScore(int lhs, int rhs) {
+  lhs in [1 .. 3] and
+  rhs in [1 .. 3] and
+  result = (lhs - rhs) % 3
 }
 
-int choiceScore(string rhs) {
-  rhs = "A" and result = 1
-  or
-  rhs = "B" and result = 2
-  or
-  rhs = "C" and result = 3
-}
+int decodeLHS(string lhs) { lhs = "ABC".charAt(result) }
 
-string oldDecode(string x) {
-  x = "X" and result = "A"
-  or
-  x = "Y" and result = "B"
-  or
-  x = "Z" and result = "C"
-}
+int oldDecodeRHS(string rhs) { rhs = "XYZ".charAt(result) }
 
 int oldScore(string lhs, string rhs) {
-  exists(string choice |
-    choice = oldDecode(rhs) and
-    result = resultScore(lhs, choice) * 3 + choiceScore(choice)
+  exists(int lhs_choice, int rhs_choice |
+    lhs_choice = decodeLHS(lhs) and
+    rhs_choice = oldDecodeRHS(rhs) and
+    result = resultScore(lhs_choice, rhs_choice) * 3 + rhs_choice
   )
 }
 
-int expectedResultScore(string value) {
-  value = "X" and result = 0
-  or
-  value = "Y" and result = 1
-  or
-  value = "Z" and result = 2
-}
+int expectedResultScore(string value) { value = "XYZ".charAt(result) }
 
 int newScore(string lhs, string rhs) {
-  exists(string choice |
-    resultScore(lhs, choice) = expectedResultScore(rhs) and
-    result = resultScore(lhs, choice) * 3 + choiceScore(choice)
+  exists(int lhs_choice, int rhs_choice |
+    lhs_choice = decodeLHS(lhs) and
+    resultScore(lhs_choice, rhs_choice) = expectedResultScore(rhs) and
+    result = resultScore(lhs_choice, rhs_choice) * 3 + rhs_choice
   )
 }
 
