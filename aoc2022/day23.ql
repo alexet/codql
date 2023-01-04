@@ -7,7 +7,7 @@ module RealImpl = Impl<realInput/0>;
 module MiniTestImpl = Impl<miniTestInput/0>;
 
 module Impl<inStr/0 input> {
-  int maxRounds() { result = 10000 }
+  int maxRounds() { result = 1000 }
 
   boolean initialElf(int x, int y) {
     exists(string type | type = Helpers<input/0>::lines(x).charAt(y) |
@@ -306,13 +306,19 @@ module Impl<inStr/0 input> {
         eastTargetCount(round, x, y) + stayCount(round, x, y)
   }
 
-  int minElfX() { result = min(int x | true = elfAt(maxRounds(), x, _)) }
+  int minElfX() { result = min(int x | true = elfAt(10, x, _)) }
 
-  int maxElfX() { result = max(int x | true = elfAt(maxRounds(), x, _)) }
+  int maxElfX() { result = max(int x | true = elfAt(10, x, _)) }
 
-  int minElfY() { result = min(int y | true = elfAt(maxRounds(), _, y)) }
+  int minElfY() { result = min(int y | true = elfAt(10, _, y)) }
 
-  int maxElfY() { result = max(int y | true = elfAt(maxRounds(), _, y)) }
+  int maxElfY() { result = max(int y | true = elfAt(10, _, y)) }
+
+  int round10Score() {
+    result =
+      (maxElfX() - minElfX() + 1) * (maxElfY() - minElfY() + 1) -
+        count(int x, int y | elfAt(10, x, y) = true)
+  }
 }
 
 select 1
