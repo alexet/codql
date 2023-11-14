@@ -1,7 +1,9 @@
 package com.github.codeql
 
 import com.github.codeql.utils.getJvmName
+import com.github.codeql.utils.versions.*
 import com.intellij.openapi.vfs.StandardFileSystems
+import org.jetbrains.kotlin.fir.java.JavaBinarySourceElement
 import org.jetbrains.kotlin.load.java.sources.JavaSourceElement
 import org.jetbrains.kotlin.load.java.structure.impl.classFiles.BinaryJavaClass
 import org.jetbrains.kotlin.load.kotlin.VirtualFileKotlinClass
@@ -9,6 +11,7 @@ import org.jetbrains.kotlin.load.kotlin.KotlinJvmBinarySourceElement
 
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.builtins.jvm.JavaToKotlinClassMap
+import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
@@ -21,20 +24,46 @@ import org.jetbrains.kotlin.load.kotlin.JvmPackagePartSource
 // for `that`.
 private fun getName(d: IrDeclarationWithName) = (d as? IrAnnotationContainer)?.let { getJvmName(it) } ?: d.name.asString()
 
-fun getIrDeclBinaryName(that: IrDeclaration): String {
-  val shortName = when(that) {
-      is IrDeclarationWithName -> getName(that)
-      else -> "(unknown-name)"
-  }
-  val internalName = StringBuilder(shortName);
-  generateSequence(that.parent) { (it as? IrDeclaration)?.parent }
-      .forEach {
-          when (it) {
-              is IrClass -> internalName.insert(0, getName(it) + "$")
-              is IrPackageFragment -> it.fqName.asString().takeIf { fqName -> fqName.isNotEmpty() }?.let { fqName -> internalName.insert(0, "$fqName.") }
-          }
-      }
-  return internalName.toString()
+@OptIn(ExperimentalStdlibApi::class) // Annotation required by kotlin versions < 1.5
+fun getFileClassName(f: IrFile) =
+    getJvmName(f) ?:
+        ((f.fileEntry.name.replaceFirst(Regex(""".*[/\\]"""), "")
+        .replaceFirst(Regex("""\.kt$"""), "")
+        .replaceFirstChar { it.uppercase() }) + "Kt")
+
+fun getIrElementBinaryName(that: IrElement): String {
+    if (that is IrFile) {
+        val shortName = getFileClassName(that)
+        val pkg = that.packageFqName.asString()
+        return if (pkg.isEmpty()) shortName else "$pkg.$shortName"
+    }
+
+    if (that !is IrDeclaration) {
+        return  "(unknown-name)"
+    }
+
+    val shortName = when(that) {
+        is IrDeclarationWithName -> getName(that)
+        else -> "(unknown-name)"
+    }
+
+    val internalName = StringBuilder(shortName)
+    if (that !is IrClass) {
+        val parent = that.parent
+        if (parent is IrFile) {
+            // Note we'll fall through and do the IrPackageFragment case as well, since IrFile <: IrPackageFragment
+            internalName.insert(0, getFileClassName(parent) + "$")
+        }
+    }
+
+    generateSequence(that.parent) { (it as? IrDeclaration)?.parent }
+        .forEach {
+            when (it) {
+                is IrClass -> internalName.insert(0, getName(it) + "$")
+                is IrPackageFragment -> it.packageFqName.asString().takeIf { fqName -> fqName.isNotEmpty() }?.let { fqName -> internalName.insert(0, "$fqName.") }
+            }
+        }
+    return internalName.toString()
 }
 
 fun getIrClassVirtualFile(irClass: IrClass): VirtualFile? {
@@ -51,6 +80,9 @@ fun getIrClassVirtualFile(irClass: IrClass): VirtualFile? {
             when(element) {
                 is BinaryJavaClass -> return element.virtualFile
             }
+        }
+        is JavaBinarySourceElement -> {
+            return cSource.javaClass.virtualFile
         }
         is KotlinJvmBinarySourceElement -> {
             val binaryClass = cSource.binaryClass
@@ -81,14 +113,29 @@ private fun getRawIrClassBinaryPath(irClass: IrClass) =
 fun getIrClassBinaryPath(irClass: IrClass): String {
   return getRawIrClassBinaryPath(irClass)
   // Otherwise, make up a fake location:
-    ?: "/!unknown-binary-location/${getIrDeclBinaryName(irClass).replace(".", "/")}.class"
+    ?: getUnknownBinaryLocation(getIrElementBinaryName(irClass))
 }
 
-fun getContainingClassOrSelf(decl: IrDeclaration): IrClass? {
-    return when(decl) {
-        is IrClass -> decl
-        else -> decl.parentClassOrNull
+fun getIrDeclarationBinaryPath(d: IrDeclaration): String? {
+    if (d is IrClass) {
+        return getIrClassBinaryPath(d)
     }
+    val parentClass = d.parentClassOrNull
+    if (parentClass != null) {
+        return getIrClassBinaryPath(parentClass)
+    }
+    if (d.parent is IrExternalPackageFragment) {
+        // This is in a file class.
+        val fqName = getFileClassFqName(d)
+        if (fqName != null) {
+            return getUnknownBinaryLocation(fqName.asString())
+        }
+    }
+    return null
+}
+
+private fun getUnknownBinaryLocation(s: String): String {
+    return "/!unknown-binary-location/${s.replace(".", "/")}.class"
 }
 
 fun getJavaEquivalentClassId(c: IrClass) =

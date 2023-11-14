@@ -345,21 +345,16 @@ module TaintedPath {
    *
    * This is relevant for paths that are known to be normalized.
    */
-  class StartsWithDotDotSanitizer extends BarrierGuardNode {
-    StringOps::StartsWith startsWith;
-
-    StartsWithDotDotSanitizer() {
-      this = startsWith and
-      isDotDotSlashPrefix(startsWith.getSubstring())
-    }
+  class StartsWithDotDotSanitizer extends BarrierGuardNode instanceof StringOps::StartsWith {
+    StartsWithDotDotSanitizer() { isDotDotSlashPrefix(super.getSubstring()) }
 
     override predicate blocks(boolean outcome, Expr e, DataFlow::FlowLabel label) {
       // Sanitize in the false case for:
       //   .startsWith(".")
       //   .startsWith("..")
       //   .startsWith("../")
-      outcome = startsWith.getPolarity().booleanNot() and
-      e = startsWith.getBaseString().asExpr() and
+      outcome = super.getPolarity().booleanNot() and
+      e = super.getBaseString().asExpr() and
       exists(Label::PosixPath posixPath | posixPath = label |
         posixPath.isNormalized() and
         posixPath.isRelative()
@@ -846,6 +841,28 @@ module TaintedPath {
       dst = call and
       srclabel = dstlabel
     )
+    or
+    exists(HtmlSanitizerCall call |
+      src = call.getInput() and
+      dst = call and
+      srclabel = dstlabel
+    )
+    or
+    exists(DataFlow::CallNode join |
+      // path.join() with spread argument
+      join = NodeJSLib::Path::moduleMember("join").getACall() and
+      src = join.getASpreadArgument() and
+      dst = join and
+      (
+        srclabel.(Label::PosixPath).canContainDotDotSlash()
+        or
+        srclabel instanceof Label::SplitPath
+      ) and
+      dstlabel.(Label::PosixPath).isNormalized() and
+      if isRelative(join.getArgument(0).getStringValue())
+      then dstlabel.(Label::PosixPath).isRelative()
+      else dstlabel.(Label::PosixPath).isAbsolute()
+    )
   }
 
   /**
@@ -945,5 +962,9 @@ module TaintedPath {
         else dstlabel.isAbsolute()
       )
     )
+  }
+
+  private class SinkFromModel extends Sink {
+    SinkFromModel() { this = ModelOutput::getASinkNode("path-injection").asSink() }
   }
 }

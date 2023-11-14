@@ -2,11 +2,13 @@ import semmle.code.cil.Attribute
 import semmle.code.cil.Declaration
 
 private predicate isOsSpecific(Declaration d) {
-  d.getQualifiedName()
+  d.getFullyQualifiedName()
       .matches("%" +
           [
-            "libobjc", "libproc", "System.Diagnostics.Tracing.XplatEventLogger",
-            "System.Threading.AutoreleasePool"
+            "libobjc", "libproc", "libc", "Interop.Sys",
+            "System.Runtime.InteropServices.ObjectiveC.ObjectiveCMarshal",
+            "System.Diagnostics.Tracing.XplatEventLogger", "System.Threading.AutoreleasePool",
+            "System.CLRConfig", "System.Diagnostics.Tracing.EventSource.<WriteEventString>",
           ] + "%")
 }
 

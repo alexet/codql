@@ -1,10 +1,11 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Semmle.Extraction.Kinds;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Semmle.Util;
+using Semmle.Extraction.Kinds;
 
 namespace Semmle.Extraction.CSharp.Entities.Expressions
 {
@@ -108,11 +109,7 @@ namespace Semmle.Extraction.CSharp.Entities.Expressions
             if (length > 0)
             {
                 var arrayInit = ArrayInitializer.CreateGenerated(cx, arrayCreation, InitializerIndex, location);
-                var child = 0;
-                foreach (var item in items)
-                {
-                    Expression.CreateGenerated(cx, item, arrayInit, child++, location);
-                }
+                items.ForEach((item, child) => Expression.CreateGenerated(cx, item, arrayInit, child, location));
             }
 
             return arrayCreation;

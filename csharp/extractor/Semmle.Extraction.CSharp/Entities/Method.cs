@@ -1,11 +1,11 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Semmle.Extraction.CSharp.Populators;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Semmle.Extraction.CSharp.Populators;
 
 namespace Semmle.Extraction.CSharp.Entities
 {
@@ -83,10 +83,12 @@ namespace Semmle.Extraction.CSharp.Entities
             }
         }
 
+        protected virtual MethodKind ExplicitlyImplementsKind => MethodKind.Ordinary;
+
         public void Overrides(TextWriter trapFile)
         {
             foreach (var explicitInterface in Symbol.ExplicitInterfaceImplementations
-                .Where(sym => sym.MethodKind == MethodKind.Ordinary)
+                .Where(sym => sym.MethodKind == ExplicitlyImplementsKind)
                 .Select(impl => Type.Create(Context, impl.ContainingType)))
             {
                 trapFile.explicitly_implements(this, explicitInterface.TypeRef);
@@ -241,7 +243,12 @@ namespace Semmle.Extraction.CSharp.Entities
             if (methodKind == MethodKind.ExplicitInterfaceImplementation)
             {
                 // Retrieve the original method kind
-                methodKind = methodDecl.ExplicitInterfaceImplementations.Select(m => m.MethodKind).FirstOrDefault();
+                if (methodDecl.ExplicitInterfaceImplementations.IsEmpty)
+                {
+                    throw new InternalError(methodDecl, "Couldn't get the original method kind for an explicit interface implementation");
+                }
+
+                methodKind = methodDecl.ExplicitInterfaceImplementations.Select(m => m.MethodKind).First();
             }
 
             switch (methodKind)

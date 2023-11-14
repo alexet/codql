@@ -11,9 +11,9 @@
  *   `package; type; subtypes; name; signature; ext; input; kind; provenance`
  * - Summaries:
  *   `package; type; subtypes; name; signature; ext; input; output; kind; provenance`
- * - Negative Summaries:
- *   `package; type; name; signature; provenance`
- *   A negative summary is used to indicate that there is no flow via a callable.
+ * - Neutrals:
+ *   `package; type; name; signature; kind; provenance`
+ *   A neutral is used to indicate that a callable is neutral with respect to flow (no summary), source (is not a source) or sink (is not a sink).
  *
  * The interpretation of a row is similar to API-graphs with a left-to-right
  * reading.
@@ -35,41 +35,56 @@
  *    or method, or a parameter.
  * 7. The `input` column specifies how data enters the element selected by the
  *    first 6 columns, and the `output` column specifies how data leaves the
- *    element selected by the first 6 columns. An `input` can be either "",
- *    "Argument[n]", "Argument[n1..n2]", "ReturnValue":
+ *    element selected by the first 6 columns. An `input` can be a dot separated
+ *    path consisting of either "", "Argument[n]", "Argument[n1..n2]",
+ *    "ReturnValue", "Element", "WithoutElement", or "WithElement":
  *    - "": Selects a write to the selected element in case this is a field.
  *    - "Argument[n]": Selects an argument in a call to the selected element.
- *      The arguments are zero-indexed, and `-1` specifies the qualifier.
+ *      The arguments are zero-indexed, and `this` specifies the qualifier.
  *    - "Argument[n1..n2]": Similar to "Argument[n]" but select any argument in
  *      the given range. The range is inclusive at both ends.
  *    - "ReturnValue": Selects a value being returned by the selected element.
  *      This requires that the selected element is a method with a body.
+ *    - "Element": Selects the collection elements of the selected element.
+ *    - "WithoutElement": Selects the selected element but without
+ *       its collection elements.
+ *    - "WithElement": Selects the collection elements of the selected element, but
+ *       points to the selected element.
  *
- *    An `output` can be either "", "Argument[n]", "Argument[n1..n2]", "Parameter",
- *    "Parameter[n]", "Parameter[n1..n2]", or "ReturnValue":
+ *    An `output` can be can be a dot separated path consisting of either "",
+ *    "Argument[n]", "Argument[n1..n2]", "Parameter", "Parameter[n]",
+ *    "Parameter[n1..n2]", "ReturnValue", or "Element":
  *    - "": Selects a read of a selected field, or a selected parameter.
  *    - "Argument[n]": Selects the post-update value of an argument in a call to the
  *      selected element. That is, the value of the argument after the call returns.
- *      The arguments are zero-indexed, and `-1` specifies the qualifier.
+ *      The arguments are zero-indexed, and `this` specifies the qualifier.
  *    - "Argument[n1..n2]": Similar to "Argument[n]" but select any argument in
  *      the given range. The range is inclusive at both ends.
  *    - "Parameter": Selects the value of a parameter of the selected element.
  *      "Parameter" is also allowed in case the selected element is already a
  *      parameter itself.
  *    - "Parameter[n]": Similar to "Parameter" but restricted to a specific
- *      numbered parameter (zero-indexed, and `-1` specifies the value of `this`).
+ *      numbered parameter (zero-indexed, and `this` specifies the value of `this`).
  *    - "Parameter[n1..n2]": Similar to "Parameter[n]" but selects any parameter
  *      in the given range. The range is inclusive at both ends.
  *    - "ReturnValue": Selects the return value of a call to the selected element.
+ *    - "Element": Selects the collection elements of the selected element.
  * 8. The `kind` column is a tag that can be referenced from QL to determine to
  *    which classes the interpreted elements should be added. For example, for
  *    sources "remote" indicates a default remote flow source, and for summaries
  *    "taint" indicates a default additional taint step and "value" indicates a
- *    globally applicable value-preserving step.
- * 9. The `provenance` column is a tag to indicate the origin of the summary.
- *    There are two supported values: "generated" and "manual". "generated" means that
- *    the model has been emitted by the model generator tool and "manual" means
- *    that the model has been written by hand.
+ *    globally applicable value-preserving step. For neutrals the kind can be `summary`,
+ *    `source` or `sink` to indicate that the neutral is neutral with respect to
+ *    flow (no summary), source (is not a source) or sink (is not a sink).
+ * 9. The `provenance` column is a tag to indicate the origin and verification of a model.
+ *    The format is {origin}-{verification} or just "manual" where the origin describes
+ *    the origin of the model and verification describes how the model has been verified.
+ *    Some examples are:
+ *    - "df-generated": The model has been generated by the model generator tool.
+ *    - "df-manual": The model has been generated by the model generator and verified by a human.
+ *    - "manual": The model has been written by hand.
+ *    This information is used in a heuristic for dataflow analysis to determine, if a
+ *    model or source code should be used for determining flow.
  */
 
 import java
@@ -78,148 +93,9 @@ private import internal.DataFlowPrivate
 private import internal.FlowSummaryImpl::Private::External
 private import internal.FlowSummaryImplSpecific as FlowSummaryImplSpecific
 private import internal.AccessPathSyntax
+private import internal.ExternalFlowExtensions as Extensions
 private import FlowSummary
-
-/**
- * A module importing the frameworks that provide external flow data,
- * ensuring that they are visible to the taint tracking / data flow library.
- */
-private module Frameworks {
-  private import internal.ContainerFlow
-  private import semmle.code.java.frameworks.android.Android
-  private import semmle.code.java.frameworks.android.ContentProviders
-  private import semmle.code.java.frameworks.android.ExternalStorage
-  private import semmle.code.java.frameworks.android.Intent
-  private import semmle.code.java.frameworks.android.SharedPreferences
-  private import semmle.code.java.frameworks.android.Slice
-  private import semmle.code.java.frameworks.android.SQLite
-  private import semmle.code.java.frameworks.android.Widget
-  private import semmle.code.java.frameworks.ApacheHttp
-  private import semmle.code.java.frameworks.apache.Collections
-  private import semmle.code.java.frameworks.apache.Lang
-  private import semmle.code.java.frameworks.Flexjson
-  private import semmle.code.java.frameworks.generated
-  private import semmle.code.java.frameworks.guava.Guava
-  private import semmle.code.java.frameworks.jackson.JacksonSerializability
-  private import semmle.code.java.frameworks.javaee.jsf.JSFRenderer
-  private import semmle.code.java.frameworks.JaxWS
-  private import semmle.code.java.frameworks.JoddJson
-  private import semmle.code.java.frameworks.Stream
-  private import semmle.code.java.frameworks.ratpack.RatpackExec
-  private import semmle.code.java.frameworks.spring.SpringHttp
-  private import semmle.code.java.frameworks.spring.SpringWebClient
-  private import semmle.code.java.security.AndroidIntentRedirection
-  private import semmle.code.java.security.ResponseSplitting
-  private import semmle.code.java.security.InformationLeak
-  private import semmle.code.java.security.FragmentInjection
-  private import semmle.code.java.security.GroovyInjection
-  private import semmle.code.java.security.ImplicitPendingIntents
-  private import semmle.code.java.security.JndiInjection
-  private import semmle.code.java.security.LdapInjection
-  private import semmle.code.java.security.MvelInjection
-  private import semmle.code.java.security.OgnlInjection
-  private import semmle.code.java.security.TemplateInjection
-  private import semmle.code.java.security.XPath
-  private import semmle.code.java.security.XsltInjection
-  private import semmle.code.java.frameworks.Jdbc
-  private import semmle.code.java.frameworks.SpringJdbc
-  private import semmle.code.java.frameworks.MyBatis
-  private import semmle.code.java.frameworks.Hibernate
-  private import semmle.code.java.frameworks.jOOQ
-}
-
-/**
- * DEPRECATED: Define source models as data extensions instead.
- *
- * A unit class for adding additional source model rows.
- *
- * Extend this class to add additional source definitions.
- */
-class SourceModelCsv = SourceModelCsvInternal;
-
-private class SourceModelCsvInternal extends Unit {
-  /** Holds if `row` specifies a source definition. */
-  abstract predicate row(string row);
-}
-
-/**
- * DEPRECATED: Define sink models as data extensions instead.
- *
- * A unit class for adding additional sink model rows.
- *
- * Extend this class to add additional sink definitions.
- */
-class SinkModelCsv = SinkModelCsvInternal;
-
-private class SinkModelCsvInternal extends Unit {
-  /** Holds if `row` specifies a sink definition. */
-  abstract predicate row(string row);
-}
-
-/**
- * DEPRECATED: Define summary models as data extensions instead.
- *
- * A unit class for adding additional summary model rows.
- *
- * Extend this class to add additional flow summary definitions.
- */
-class SummaryModelCsv = SummaryModelCsvInternal;
-
-private class SummaryModelCsvInternal extends Unit {
-  /** Holds if `row` specifies a summary definition. */
-  abstract predicate row(string row);
-}
-
-/**
- * DEPRECATED: Define negative summary models as data extensions instead.
- *
- * A unit class for adding additional negative summary model rows.
- *
- * Extend this class to add additional negative summary definitions.
- */
-class NegativeSummaryModelCsv = NegativeSummaryModelCsvInternal;
-
-private class NegativeSummaryModelCsvInternal extends Unit {
-  /** Holds if `row` specifies a negative summary definition. */
-  abstract predicate row(string row);
-}
-
-private predicate sourceModelInternal(string row) { any(SourceModelCsvInternal s).row(row) }
-
-private predicate summaryModelInternal(string row) { any(SummaryModelCsvInternal s).row(row) }
-
-private predicate sinkModelInternal(string row) { any(SinkModelCsvInternal s).row(row) }
-
-private predicate negativeSummaryModelInternal(string row) {
-  any(NegativeSummaryModelCsvInternal s).row(row)
-}
-
-/**
- * Holds if an experimental source model exists for the given parameters.
- * This is only for experimental queries.
- */
-extensible predicate extExperimentalSourceModel(
-  string package, string type, boolean subtypes, string name, string signature, string ext,
-  string output, string kind, string provenance, string filter
-);
-
-/**
- * Holds if an experimental sink model exists for the given parameters.
- * This is only for experimental queries.
- */
-extensible predicate extExperimentalSinkModel(
-  string package, string type, boolean subtypes, string name, string signature, string ext,
-  string input, string kind, string provenance, string filter
-);
-
-/**
- * Holds if an experimental summary model exists for the given parameters.
- * This is only for experimental queries.
- */
-extensible predicate extExperimentalSummaryModel(
-  string package, string type, boolean subtypes, string name, string signature, string ext,
-  string input, string output, string kind, string provenance, string filter
-);
+private import codeql.mad.ModelValidation as SharedModelVal
 
 /**
  * A class for activating additional model rows.
@@ -238,7 +114,7 @@ abstract class ActiveExperimentalModels extends string {
     string package, string type, boolean subtypes, string name, string signature, string ext,
     string output, string kind, string provenance
   ) {
-    extExperimentalSourceModel(package, type, subtypes, name, signature, ext, output, kind,
+    Extensions::experimentalSourceModel(package, type, subtypes, name, signature, ext, output, kind,
       provenance, this)
   }
 
@@ -249,7 +125,7 @@ abstract class ActiveExperimentalModels extends string {
     string package, string type, boolean subtypes, string name, string signature, string ext,
     string output, string kind, string provenance
   ) {
-    extExperimentalSinkModel(package, type, subtypes, name, signature, ext, output, kind,
+    Extensions::experimentalSinkModel(package, type, subtypes, name, signature, ext, output, kind,
       provenance, this)
   }
 
@@ -260,127 +136,47 @@ abstract class ActiveExperimentalModels extends string {
     string package, string type, boolean subtypes, string name, string signature, string ext,
     string input, string output, string kind, string provenance
   ) {
-    extExperimentalSummaryModel(package, type, subtypes, name, signature, ext, input, output, kind,
-      provenance, this)
+    Extensions::experimentalSummaryModel(package, type, subtypes, name, signature, ext, input,
+      output, kind, provenance, this)
   }
 }
-
-/**
- * Holds if a source model exists for the given parameters.
- */
-extensible predicate extSourceModel(
-  string package, string type, boolean subtypes, string name, string signature, string ext,
-  string output, string kind, string provenance
-);
 
 /** Holds if a source model exists for the given parameters. */
 predicate sourceModel(
   string package, string type, boolean subtypes, string name, string signature, string ext,
   string output, string kind, string provenance
 ) {
-  exists(string row |
-    sourceModelInternal(row) and
-    row.splitAt(";", 0) = package and
-    row.splitAt(";", 1) = type and
-    row.splitAt(";", 2) = subtypes.toString() and
-    subtypes = [true, false] and
-    row.splitAt(";", 3) = name and
-    row.splitAt(";", 4) = signature and
-    row.splitAt(";", 5) = ext and
-    row.splitAt(";", 6) = output and
-    row.splitAt(";", 7) = kind and
-    row.splitAt(";", 8) = provenance
-  )
-  or
-  extSourceModel(package, type, subtypes, name, signature, ext, output, kind, provenance)
+  Extensions::sourceModel(package, type, subtypes, name, signature, ext, output, kind, provenance)
   or
   any(ActiveExperimentalModels q)
       .sourceModel(package, type, subtypes, name, signature, ext, output, kind, provenance)
 }
 
 /** Holds if a sink model exists for the given parameters. */
-extensible predicate extSinkModel(
-  string package, string type, boolean subtypes, string name, string signature, string ext,
-  string input, string kind, string provenance
-);
-
-/** Holds if a sink model exists for the given parameters. */
 predicate sinkModel(
   string package, string type, boolean subtypes, string name, string signature, string ext,
   string input, string kind, string provenance
 ) {
-  exists(string row |
-    sinkModelInternal(row) and
-    row.splitAt(";", 0) = package and
-    row.splitAt(";", 1) = type and
-    row.splitAt(";", 2) = subtypes.toString() and
-    subtypes = [true, false] and
-    row.splitAt(";", 3) = name and
-    row.splitAt(";", 4) = signature and
-    row.splitAt(";", 5) = ext and
-    row.splitAt(";", 6) = input and
-    row.splitAt(";", 7) = kind and
-    row.splitAt(";", 8) = provenance
-  )
-  or
-  extSinkModel(package, type, subtypes, name, signature, ext, input, kind, provenance)
+  Extensions::sinkModel(package, type, subtypes, name, signature, ext, input, kind, provenance)
   or
   any(ActiveExperimentalModels q)
       .sinkModel(package, type, subtypes, name, signature, ext, input, kind, provenance)
 }
 
 /** Holds if a summary model exists for the given parameters. */
-extensible predicate extSummaryModel(
-  string package, string type, boolean subtypes, string name, string signature, string ext,
-  string input, string output, string kind, string provenance
-);
-
-/** Holds if a summary model exists for the given parameters. */
 predicate summaryModel(
   string package, string type, boolean subtypes, string name, string signature, string ext,
   string input, string output, string kind, string provenance
 ) {
-  exists(string row |
-    summaryModelInternal(row) and
-    row.splitAt(";", 0) = package and
-    row.splitAt(";", 1) = type and
-    row.splitAt(";", 2) = subtypes.toString() and
-    subtypes = [true, false] and
-    row.splitAt(";", 3) = name and
-    row.splitAt(";", 4) = signature and
-    row.splitAt(";", 5) = ext and
-    row.splitAt(";", 6) = input and
-    row.splitAt(";", 7) = output and
-    row.splitAt(";", 8) = kind and
-    row.splitAt(";", 9) = provenance
-  )
-  or
-  extSummaryModel(package, type, subtypes, name, signature, ext, input, output, kind, provenance)
+  Extensions::summaryModel(package, type, subtypes, name, signature, ext, input, output, kind,
+    provenance)
   or
   any(ActiveExperimentalModels q)
       .summaryModel(package, type, subtypes, name, signature, ext, input, output, kind, provenance)
 }
 
-/** Holds if a summary model exists indicating there is no flow for the given parameters. */
-extensible predicate extNegativeSummaryModel(
-  string package, string type, string name, string signature, string provenance
-);
-
-/** Holds if a summary model exists indicating there is no flow for the given parameters. */
-predicate negativeSummaryModel(
-  string package, string type, string name, string signature, string provenance
-) {
-  exists(string row |
-    negativeSummaryModelInternal(row) and
-    row.splitAt(";", 0) = package and
-    row.splitAt(";", 1) = type and
-    row.splitAt(";", 2) = name and
-    row.splitAt(";", 3) = signature and
-    row.splitAt(";", 4) = provenance
-  )
-  or
-  extNegativeSummaryModel(package, type, name, signature, provenance)
-}
+/** Holds if a neutral model exists for the given parameters. */
+predicate neutralModel = Extensions::neutralModel/6;
 
 private predicate relevantPackage(string package) {
   sourceModel(package, _, _, _, _, _, _, _, _) or
@@ -439,7 +235,7 @@ predicate modelCoverage(string package, int pkgs, string kind, string part, int 
 /** Provides a query predicate to check the MaD models for validation errors. */
 module ModelValidation {
   private string getInvalidModelInput() {
-    exists(string pred, string input, string part |
+    exists(string pred, AccessPath input, AccessPathToken part |
       sinkModel(_, _, _, _, _, _, input, _, _) and pred = "sink"
       or
       summaryModel(_, _, _, _, _, _, input, _, _, _) and pred = "summary"
@@ -448,90 +244,47 @@ module ModelValidation {
         invalidSpecComponent(input, part) and
         not part = "" and
         not (part = "Argument" and pred = "sink") and
-        not parseArg(part, _)
+        not parseArg(part, _) and
+        not part.getName() = "Field"
         or
-        part = input.(AccessPath).getToken(0) and
+        part = input.getToken(0) and
         parseParam(part, _)
+        or
+        invalidIndexComponent(input, part)
       ) and
       result = "Unrecognized input specification \"" + part + "\" in " + pred + " model."
     )
   }
 
   private string getInvalidModelOutput() {
-    exists(string pred, string output, string part |
+    exists(string pred, AccessPath output, AccessPathToken part |
       sourceModel(_, _, _, _, _, _, output, _, _) and pred = "source"
       or
       summaryModel(_, _, _, _, _, _, _, output, _, _) and pred = "summary"
     |
-      invalidSpecComponent(output, part) and
-      not part = "" and
-      not (part = ["Argument", "Parameter"] and pred = "source") and
+      (
+        invalidSpecComponent(output, part) and
+        not part = "" and
+        not (part = ["Argument", "Parameter"] and pred = "source") and
+        not part.getName() = "Field"
+        or
+        invalidIndexComponent(output, part)
+      ) and
       result = "Unrecognized output specification \"" + part + "\" in " + pred + " model."
     )
   }
 
-  private string getInvalidModelKind() {
-    exists(string kind | summaryModel(_, _, _, _, _, _, _, _, kind, _) |
-      not kind = ["taint", "value"] and
-      result = "Invalid kind \"" + kind + "\" in summary model."
-    )
-    or
-    exists(string kind | sinkModel(_, _, _, _, _, _, _, kind, _) |
-      not kind =
-        [
-          "open-url", "jndi-injection", "ldap", "sql", "jdbc-url", "logging", "mvel", "xpath",
-          "groovy", "xss", "ognl-injection", "intent-start", "pending-intent-sent",
-          "url-open-stream", "url-redirect", "create-file", "write-file", "set-hostname-verifier",
-          "header-splitting", "information-leak", "xslt", "jexl", "bean-validation", "ssti",
-          "fragment-injection"
-        ] and
-      not kind.matches("regex-use%") and
-      not kind.matches("qltest%") and
-      result = "Invalid kind \"" + kind + "\" in sink model."
-    )
-    or
-    exists(string kind | sourceModel(_, _, _, _, _, _, _, kind, _) |
-      not kind = ["remote", "contentprovider", "android-widget", "android-external-storage-dir"] and
-      not kind.matches("qltest%") and
-      result = "Invalid kind \"" + kind + "\" in source model."
-    )
+  private module KindValConfig implements SharedModelVal::KindValidationConfigSig {
+    predicate summaryKind(string kind) { summaryModel(_, _, _, _, _, _, _, _, kind, _) }
+
+    predicate sinkKind(string kind) { sinkModel(_, _, _, _, _, _, _, kind, _) }
+
+    predicate sourceKind(string kind) { sourceModel(_, _, _, _, _, _, _, kind, _) }
+
+    predicate neutralKind(string kind) { neutralModel(_, _, _, _, kind, _) }
   }
 
-  private string getInvalidModelSubtype() {
-    exists(string pred, string row |
-      sourceModelInternal(row) and pred = "source"
-      or
-      sinkModelInternal(row) and pred = "sink"
-      or
-      summaryModelInternal(row) and pred = "summary"
-    |
-      exists(string b |
-        b = row.splitAt(";", 2) and
-        not b = ["true", "false"] and
-        result = "Invalid boolean \"" + b + "\" in " + pred + " model."
-      )
-    )
-  }
-
-  private string getInvalidModelColumnCount() {
-    exists(string pred, string row, int expect |
-      sourceModelInternal(row) and expect = 9 and pred = "source"
-      or
-      sinkModelInternal(row) and expect = 9 and pred = "sink"
-      or
-      summaryModelInternal(row) and expect = 10 and pred = "summary"
-      or
-      negativeSummaryModelInternal(row) and expect = 5 and pred = "negative summary"
-    |
-      exists(int cols |
-        cols = 1 + max(int n | exists(row.splitAt(";", n))) and
-        cols != expect and
-        result =
-          "Wrong number of columns in " + pred + " model row, expected " + expect + ", got " + cols +
-            " in " + row + "."
-      )
-    )
-  }
+  private module KindVal = SharedModelVal::KindValidation<KindValConfig>;
 
   private string getInvalidModelSignature() {
     exists(
@@ -545,9 +298,9 @@ module ModelValidation {
       summaryModel(package, type, _, name, signature, ext, _, _, _, provenance) and
       pred = "summary"
       or
-      negativeSummaryModel(package, type, name, signature, provenance) and
+      neutralModel(package, type, name, signature, _, provenance) and
       ext = "" and
-      pred = "negative summary"
+      pred = "neutral"
     |
       not package.regexpMatch("[a-zA-Z0-9_\\.]*") and
       result = "Dubious package \"" + package + "\" in " + pred + " model."
@@ -555,7 +308,7 @@ module ModelValidation {
       not type.regexpMatch("[a-zA-Z0-9_\\$<>]+") and
       result = "Dubious type \"" + type + "\" in " + pred + " model."
       or
-      not name.regexpMatch("[a-zA-Z0-9_]*") and
+      not name.regexpMatch("[a-zA-Z0-9_\\-]*") and
       result = "Dubious name \"" + name + "\" in " + pred + " model."
       or
       not signature.regexpMatch("|\\([a-zA-Z0-9_\\.\\$<>,\\[\\]]*\\)") and
@@ -564,7 +317,7 @@ module ModelValidation {
       not ext.regexpMatch("|Annotated") and
       result = "Unrecognized extra API graph element \"" + ext + "\" in " + pred + " model."
       or
-      not provenance = ["manual", "generated"] and
+      invalidProvenance(provenance) and
       result = "Unrecognized provenance description \"" + provenance + "\" in " + pred + " model."
     )
   }
@@ -574,7 +327,7 @@ module ModelValidation {
     msg =
       [
         getInvalidModelSignature(), getInvalidModelInput(), getInvalidModelOutput(),
-        getInvalidModelSubtype(), getInvalidModelColumnCount(), getInvalidModelKind()
+        KindVal::getInvalidModelKind()
       ]
   }
 }
@@ -589,56 +342,78 @@ private predicate elementSpec(
   or
   summaryModel(package, type, subtypes, name, signature, ext, _, _, _, _)
   or
-  negativeSummaryModel(package, type, name, signature, _) and ext = "" and subtypes = false
+  neutralModel(package, type, name, signature, _, _) and ext = "" and subtypes = false
 }
 
-private string paramsStringPart(Callable c, int i) {
-  i = -1 and result = "("
+private string getNestedName(Type t) {
+  not t instanceof RefType and result = t.toString()
   or
-  exists(int n, string p | c.getParameterType(n).getErasure().toString() = p |
-    i = 2 * n and result = p
+  not t.(Array).getElementType() instanceof NestedType and result = t.(RefType).nestedName()
+  or
+  result =
+    t.(Array).getElementType().(NestedType).getEnclosingType().nestedName() + "$" + t.getName()
+}
+
+private string getQualifiedName(Type t) {
+  not t instanceof RefType and result = t.toString()
+  or
+  result = t.(RefType).getQualifiedName()
+  or
+  exists(Array a, Type c | a = t and c = a.getElementType() |
+    not c instanceof RefType and result = t.toString()
     or
-    i = 2 * n - 1 and result = "," and n != 0
+    exists(string pkgName | pkgName = c.(RefType).getPackage().getName() |
+      if pkgName = "" then result = getNestedName(a) else result = pkgName + "." + getNestedName(a)
+    )
   )
-  or
-  i = 2 * c.getNumberOfParameters() and result = ")"
 }
 
 /**
  * Gets a parenthesized string containing all parameter types of this callable, separated by a comma.
  *
- * Returns the empty string if the callable has no parameters.
+ * Returns an empty parenthesized string if the callable has no parameters.
  * Parameter types are represented by their type erasure.
  */
 cached
-string paramsString(Callable c) { result = concat(int i | | paramsStringPart(c, i) order by i) }
+string paramsString(Callable c) {
+  result =
+    "(" + concat(int i | | getNestedName(c.getParameterType(i).getErasure()), "," order by i) + ")"
+}
+
+private string paramsStringQualified(Callable c) {
+  result =
+    "(" + concat(int i | | getQualifiedName(c.getParameterType(i).getErasure()), "," order by i) +
+      ")"
+}
 
 private Element interpretElement0(
   string package, string type, boolean subtypes, string name, string signature
 ) {
   elementSpec(package, type, subtypes, name, signature, _) and
-  exists(RefType t | t.hasQualifiedName(package, type) |
+  (
     exists(Member m |
       (
         result = m
         or
         subtypes = true and result.(SrcMethod).overridesOrInstantiates+(m)
       ) and
-      m.getDeclaringType() = t and
-      m.hasName(name)
+      m.hasQualifiedName(package, type, name)
     |
       signature = "" or
-      m.(Callable).getSignature() = any(string nameprefix) + signature or
+      paramsStringQualified(m) = signature or
       paramsString(m) = signature
     )
     or
-    (if subtypes = true then result.(SrcRefType).getASourceSupertype*() = t else result = t) and
-    name = "" and
-    signature = ""
+    exists(RefType t |
+      t.hasQualifiedName(package, type) and
+      (if subtypes = true then result.(SrcRefType).getASourceSupertype*() = t else result = t) and
+      name = "" and
+      signature = ""
+    )
   )
 }
 
-/** Gets the source/sink/summary/negativesummary element corresponding to the supplied parameters. */
+/** Gets the source/sink/summary/neutral element corresponding to the supplied parameters. */
 Element interpretElement(
   string package, string type, boolean subtypes, string name, string signature, string ext
 ) {

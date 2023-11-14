@@ -1,5 +1,4 @@
 import java
-private import semmle.code.java.dataflow.ExternalFlow
 private import semmle.code.java.dataflow.FlowSources
 
 /** The class `com.jfinal.core.Controller`. */
@@ -45,7 +44,7 @@ class SetRequestAttributeMethod extends Method {
  */
 private class SetToGetAttributeStep extends AdditionalValueStep {
   override predicate step(DataFlow::Node pred, DataFlow::Node succ) {
-    exists(MethodAccess gma, MethodAccess sma |
+    exists(MethodCall gma, MethodCall sma |
       (
         gma.getMethod() instanceof GetSessionAttributeMethod and
         sma.getMethod() instanceof SetSessionAttributeMethod

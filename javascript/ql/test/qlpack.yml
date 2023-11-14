@@ -5,3 +5,4 @@ dependencies:
   codeql/javascript-queries: ${workspace}
 extractor: javascript
 tests: .
+warnOnImplicitThis: true

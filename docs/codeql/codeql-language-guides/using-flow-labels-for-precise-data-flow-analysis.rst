@@ -70,18 +70,22 @@ For example, we would like to flag this code:
 
 .. code-block:: javascript
 
-  var data = JSON.parse(str);
-  if (data.length > 0) {  // problematic: `data` may be `null`
-    ...
+  function test(str) {
+    var data = JSON.parse(str);
+    if (data.length > 0) {  // problematic: `data` may be `null`
+      ...
+    }
   }
 
 This code, on the other hand, should not be flagged:
 
 .. code-block:: javascript
 
-  var data = JSON.parse(str);
-  if (data && data.length > 0) { // unproblematic: `data` is first checked for nullness
-    ...
+  function test(str) {
+    var data = JSON.parse(str);
+    if (data && data.length > 0) { // unproblematic: `data` is first checked for nullness
+      ...
+    }
   }
 
 We will first try to write a query to find this kind of problem without flow labels, and use the
@@ -168,11 +172,13 @@ checked for null-guardedness:
 
 .. code-block:: javascript
 
-  var root = JSON.parse(str);
-  if (root) {
-    var payload = root.data;   // unproblematic: `root` cannot be `null` here
-    if (payload.length > 0) {  // problematic: `payload` may be `null` here
-      ...
+  function test(str) {
+    var root = JSON.parse(str);
+    if (root) {
+      var payload = root.data;   // unproblematic: `root` cannot be `null` here
+      if (payload.length > 0) {  // problematic: `payload` may be `null` here
+        ...
+      }
     }
   }
 
@@ -338,10 +344,9 @@ step by step in the UI:
   where cfg.hasFlowPath(source, sink)
   select sink, source, sink, "Property access on JSON value originating $@.", source, "here"
 
-`Here <https://lgtm.com/query/5347702611074820306>`_ is a run of this query on the `plexus-interop
-<https://lgtm.com/projects/g/finos-plexus/plexus-interop/>`_ project on LGTM.com. Many of the 19
-results are false positives since we currently do not model many ways in which a value can be
-checked for nullness. In particular, after a property reference ``x.p`` we implicitly know that
+We ran this query on the https://github.com/finos/plexus-interop repository. Many of the
+results were false positives since the query does not currently model many ways in which we can check
+a value for nullness. In particular, after a property reference ``x.p`` we implicitly know that
 ``x`` cannot be null anymore, since otherwise the reference would have thrown an exception.
 Modeling this would allow us to get rid of most of the false positives, but is beyond the scope of
 this tutorial.
@@ -391,10 +396,10 @@ Some of our standard security queries use flow labels. You can look at their imp
 to get a feeling for how to use flow labels in practice.
 
 In particular, both of the examples mentioned in the section on limitations of basic data flow above
-are from standard security queries that use flow labels. The `Prototype pollution
-<https://lgtm.com/rules/1508857356317>`_ query uses two flow labels to distinguish completely
+are from standard security queries that use flow labels. The `Prototype-polluting merge call
+<https://codeql.github.com/codeql-query-help/javascript/js-prototype-pollution/>`_ query uses two flow labels to distinguish completely
 tainted objects from partially tainted objects. The `Uncontrolled data used in path expression
-<https://lgtm.com/rules/1971530250>`_ query uses four flow labels to track whether a user-controlled
+<https://codeql.github.com/codeql-query-help/javascript/js-path-injection/>`_ query uses four flow labels to track whether a user-controlled
 string may be an absolute path and whether it may contain ``..`` components.
 
 Further reading

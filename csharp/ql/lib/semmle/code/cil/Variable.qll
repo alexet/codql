@@ -29,7 +29,9 @@ class Variable extends DotNet::Variable, Declaration, DataFlowNode, @cil_variabl
 
 /** A stack variable. Either a local variable (`LocalVariable`) or a parameter (`Parameter`). */
 class StackVariable extends Variable, @cil_stack_variable {
-  override predicate hasQualifiedName(string qualifier, string name) { none() }
+  deprecated override predicate hasQualifiedName(string qualifier, string name) { none() }
+
+  override predicate hasFullyQualifiedName(string qualifier, string name) { none() }
 }
 
 /**
@@ -152,4 +154,7 @@ class Field extends DotNet::Field, Variable, Member, CustomModifierReceiver, @ci
   override ValueOrRefType getDeclaringType() { cil_field(this, result, _, _) }
 
   override Location getLocation() { result = this.getDeclaringType().getLocation() }
+
+  /** Holds if this declaration is `ref`. */
+  predicate isRef() { cil_type_annotation(this, 32) }
 }

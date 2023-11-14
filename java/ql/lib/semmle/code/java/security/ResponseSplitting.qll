@@ -11,18 +11,16 @@ private import semmle.code.java.dataflow.ExternalFlow
 abstract class HeaderSplittingSink extends DataFlow::Node { }
 
 private class DefaultHeaderSplittingSink extends HeaderSplittingSink {
-  DefaultHeaderSplittingSink() { sinkNode(this, "header-splitting") }
+  DefaultHeaderSplittingSink() { sinkNode(this, "response-splitting") }
 }
 
 /** A source that introduces data considered safe to use by a header splitting source. */
-abstract class SafeHeaderSplittingSource extends DataFlow::Node {
-  SafeHeaderSplittingSource() { this instanceof RemoteFlowSource }
-}
+abstract class SafeHeaderSplittingSource extends DataFlow::Node instanceof RemoteFlowSource { }
 
 /** A default source that introduces data considered safe to use by a header splitting source. */
 private class DefaultSafeHeaderSplittingSource extends SafeHeaderSplittingSource {
   DefaultSafeHeaderSplittingSource() {
-    this.asExpr().(MethodAccess).getMethod() instanceof HttpServletRequestGetHeaderMethod or
-    this.asExpr().(MethodAccess).getMethod() instanceof CookieGetNameMethod
+    this.asExpr().(MethodCall).getMethod() instanceof HttpServletRequestGetHeaderMethod or
+    this.asExpr().(MethodCall).getMethod() instanceof CookieGetNameMethod
   }
 }

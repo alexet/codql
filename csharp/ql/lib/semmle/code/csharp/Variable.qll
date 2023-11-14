@@ -71,7 +71,10 @@ class LocalScopeVariable extends Variable, @local_scope_variable {
    */
   predicate isRef() { none() }
 
-  override predicate hasQualifiedName(string qualifier, string name) { none() }
+  /**
+   * Holds if this local variable or parameter is `scoped`.
+   */
+  predicate isScoped() { scoped_annotation(this, _) }
 }
 
 /**
@@ -85,7 +88,8 @@ class LocalScopeVariable extends Variable, @local_scope_variable {
  * ```
  */
 class Parameter extends DotNet::Parameter, LocalScopeVariable, Attributable, TopLevelExprParent,
-  @parameter {
+  @parameter
+{
   /**
    * Gets the position of this parameter. For example, the position of `x` is
    * 0 and the position of `y` is 1 in
@@ -189,7 +193,12 @@ class Parameter extends DotNet::Parameter, LocalScopeVariable, Attributable, Top
 
   override string getName() { params(this, result, _, _, _, _, _) }
 
-  override Type getType() { params(this, _, getTypeRef(result), _, _, _, _) }
+  override Type getType() {
+    params(this, _, result, _, _, _, _)
+    or
+    not params(this, _, any(Type t), _, _, _, _) and
+    params(this, _, getTypeRef(result), _, _, _, _)
+  }
 
   override Location getALocation() { param_location(this, result) }
 
@@ -335,7 +344,12 @@ class LocalVariable extends LocalScopeVariable, @local_variable {
 
   override string getName() { localvars(this, _, result, _, _, _) }
 
-  override Type getType() { localvars(this, _, _, _, getTypeRef(result), _) }
+  override Type getType() {
+    localvars(this, _, _, _, result, _)
+    or
+    not localvars(this, _, _, _, any(Type t), _) and
+    localvars(this, _, _, _, getTypeRef(result), _)
+  }
 
   override Location getALocation() { localvar_location(this, result) }
 
@@ -371,7 +385,8 @@ class LocalConstant extends LocalVariable, @local_constant {
  * ```
  */
 class Field extends Variable, AssignableMember, Attributable, TopLevelExprParent, DotNet::Field,
-  @field {
+  @field
+{
   /**
    * Gets the initial value of this field, if any. For example, the initial
    * value of `F` on line 2 is `20` in
@@ -399,6 +414,12 @@ class Field extends Variable, AssignableMember, Attributable, TopLevelExprParent
   /** Holds if this field is `volatile`. */
   predicate isVolatile() { this.hasModifier("volatile") }
 
+  /** Holds if this is a `ref` field. */
+  predicate isRef() { this.getAnnotatedType().isRef() }
+
+  /** Holds if this is a `ref readonly` field. */
+  predicate isReadonlyRef() { this.getAnnotatedType().isReadonlyRef() }
+
   /** Holds if this field is `readonly`. */
   predicate isReadOnly() { this.hasModifier("readonly") }
 
@@ -410,7 +431,12 @@ class Field extends Variable, AssignableMember, Attributable, TopLevelExprParent
 
   override string getName() { fields(this, _, result, _, _, _) }
 
-  override Type getType() { fields(this, _, _, _, getTypeRef(result), _) }
+  override Type getType() {
+    fields(this, _, _, _, result, _)
+    or
+    not fields(this, _, _, _, any(Type t), _) and
+    fields(this, _, _, _, getTypeRef(result), _)
+  }
 
   override Location getALocation() { field_location(this, result) }
 

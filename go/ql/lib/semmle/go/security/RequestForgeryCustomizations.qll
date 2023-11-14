@@ -33,13 +33,6 @@ module RequestForgery {
   abstract class SanitizerEdge extends DataFlow::Node { }
 
   /**
-   * DEPRECATED: Use `Sanitizer` instead.
-   *
-   * A sanitizer guard for request forgery vulnerabilities.
-   */
-  abstract deprecated class SanitizerGuard extends DataFlow::BarrierGuard { }
-
-  /**
    * A third-party controllable input, considered as a flow source for request forgery.
    */
   class UntrustedFlowAsSource extends Source, UntrustedFlowSource { }
@@ -102,9 +95,7 @@ module RequestForgery {
 }
 
 /** A sink for request forgery, considered as a sink for safe URL flow. */
-private class SafeUrlSink extends SafeUrlFlow::Sink {
-  SafeUrlSink() { this instanceof RequestForgery::Sink }
-}
+private class SafeUrlSink extends SafeUrlFlow::Sink instanceof RequestForgery::Sink { }
 
 /**
  * A read of a field considered unsafe for request forgery, considered as a sanitizer for a safe

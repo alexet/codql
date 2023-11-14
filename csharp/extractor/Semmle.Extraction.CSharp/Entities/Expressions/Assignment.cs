@@ -1,8 +1,8 @@
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.CSharp;
-using Semmle.Extraction.Kinds;
-using Microsoft.CodeAnalysis;
 using System.IO;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Semmle.Extraction.Kinds;
 
 namespace Semmle.Extraction.CSharp.Entities.Expressions
 {
@@ -71,6 +71,8 @@ namespace Semmle.Extraction.CSharp.Entities.Expressions
                     return ExprKind.ASSIGN_LSHIFT;
                 case SyntaxKind.GreaterThanGreaterThanEqualsToken:
                     return ExprKind.ASSIGN_RSHIFT;
+                case SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
+                    return ExprKind.ASSIGN_URSHIFT;
                 case SyntaxKind.QuestionQuestionEqualsToken:
                     return ExprKind.ASSIGN_COALESCE;
                 default:
@@ -141,6 +143,8 @@ namespace Semmle.Extraction.CSharp.Entities.Expressions
                         return ExprKind.REM;
                     case ExprKind.ASSIGN_RSHIFT:
                         return ExprKind.RSHIFT;
+                    case ExprKind.ASSIGN_URSHIFT:
+                        return ExprKind.URSHIFT;
                     case ExprKind.ASSIGN_SUB:
                         return ExprKind.SUB;
                     case ExprKind.ASSIGN_XOR:

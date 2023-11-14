@@ -1,7 +1,12 @@
 import csharp
+import semmle.code.csharp.commons.QualifiedName
 
 private string getSignature(Method m) {
-  result = m.getDeclaringType().getQualifiedName() + "." + m.toStringWithTypes()
+  exists(string qualifier, string name |
+    m.getDeclaringType().hasFullyQualifiedName(qualifier, name)
+  |
+    result = getQualifiedName(qualifier, name) + "." + m.toStringWithTypes()
+  )
 }
 
 query predicate withExpr(WithExpr with, string type, Expr expr, ObjectInitializer init, string clone) {

@@ -1,12 +1,13 @@
 import cpp
 import semmle.code.cpp.models.implementations.Allocation
+import semmle.code.cpp.Print
 
 query predicate newExprs(
   NewExpr expr, string type, string sig, int size, int alignment, string form, string placement
 ) {
   exists(Function allocator, Type allocatedType |
     expr.getAllocator() = allocator and
-    sig = allocator.getFullSignature() and
+    sig = getIdentityString(allocator) and
     allocatedType = expr.getAllocatedType() and
     type = allocatedType.toString() and
     size = allocatedType.getSize() and
@@ -24,7 +25,7 @@ query predicate newArrayExprs(
 ) {
   exists(Function allocator, Type arrayType, Type elementType |
     expr.getAllocator() = allocator and
-    sig = allocator.getFullSignature() and
+    sig = getIdentityString(allocator) and
     arrayType = expr.getAllocatedType() and
     t1 = arrayType.toString() and
     elementType = expr.getAllocatedElementType() and
@@ -44,7 +45,7 @@ query predicate newExprDeallocators(
 ) {
   exists(Function deallocator, Type allocatedType |
     expr.getDeallocator() = deallocator and
-    sig = deallocator.getFullSignature() and
+    sig = getIdentityString(deallocator) and
     allocatedType = expr.getAllocatedType() and
     type = allocatedType.toString() and
     size = allocatedType.getSize() and
@@ -62,7 +63,7 @@ query predicate newArrayExprDeallocators(
 ) {
   exists(Function deallocator, Type elementType |
     expr.getDeallocator() = deallocator and
-    sig = deallocator.getFullSignature() and
+    sig = getIdentityString(deallocator) and
     elementType = expr.getAllocatedElementType() and
     type = elementType.toString() and
     size = elementType.getSize() and
@@ -76,11 +77,12 @@ query predicate newArrayExprDeallocators(
 }
 
 query predicate deleteExprs(
-  DeleteExpr expr, string type, string sig, int size, int alignment, string form
+  DeleteExpr expr, string type, string sig, int size, int alignment, string form,
+  boolean hasDeallocatorCall
 ) {
   exists(Function deallocator, Type deletedType |
     expr.getDeallocator() = deallocator and
-    sig = deallocator.getFullSignature() and
+    sig = getIdentityString(deallocator) and
     deletedType = expr.getDeletedObjectType() and
     type = deletedType.toString() and
     size = deletedType.getSize() and
@@ -89,7 +91,10 @@ query predicate deleteExprs(
       (if expr.hasAlignedDeallocation() then aligned = "aligned" else aligned = "") and
       (if expr.hasSizedDeallocation() then sized = "sized" else sized = "") and
       form = sized + " " + aligned
-    )
+    ) and
+    if exists(expr.getDeallocatorCall())
+    then hasDeallocatorCall = true
+    else hasDeallocatorCall = false
   )
 }
 
@@ -98,7 +103,7 @@ query predicate deleteArrayExprs(
 ) {
   exists(Function deallocator, Type elementType |
     expr.getDeallocator() = deallocator and
-    sig = deallocator.getFullSignature() and
+    sig = getIdentityString(deallocator) and
     elementType = expr.getDeletedElementType() and
     type = elementType.toString() and
     size = elementType.getSize() and

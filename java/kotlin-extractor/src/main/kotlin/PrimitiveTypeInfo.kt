@@ -7,11 +7,13 @@ import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.name.FqName
+import com.github.codeql.utils.*
+import com.github.codeql.utils.versions.*
 
 class PrimitiveTypeMapping(val logger: Logger, val pluginContext: IrPluginContext) {
     fun getPrimitiveInfo(s: IrSimpleType) =
         s.classOrNull?.let {
-            if ((it.owner.parent as? IrPackageFragment)?.fqName == StandardNames.BUILT_INS_PACKAGE_FQ_NAME)
+            if ((it.owner.parent as? IrPackageFragment)?.packageFqName == StandardNames.BUILT_INS_PACKAGE_FQ_NAME)
                 mapping[it.owner.name]
             else
                 null
@@ -25,7 +27,7 @@ class PrimitiveTypeMapping(val logger: Logger, val pluginContext: IrPluginContex
     )
 
     private fun findClass(fqName: String, fallback: IrClass): IrClass {
-        val symbol = pluginContext.referenceClass(FqName(fqName))
+        val symbol = getClassByFqName(pluginContext, fqName)
         if(symbol == null) {
             logger.warn("Can't find $fqName")
             // Do the best we can

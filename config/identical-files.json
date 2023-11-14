@@ -1,65 +1,41 @@
 {
-  "DataFlow Java/C++/C#/Go/Python/Ruby/Swift": [
-    "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImpl.qll",
+  "DataFlow Java/C++/C#/Go/Python/Ruby/Swift Legacy Configuration": [
+    "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImpl1.qll",
     "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImpl2.qll",
     "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImpl3.qll",
     "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImpl4.qll",
     "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImpl5.qll",
     "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImpl6.qll",
-    "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImplForSerializability.qll",
-    "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImplForOnActivityResult.qll",
-    "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImpl.qll",
+    "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImpl1.qll",
     "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImpl2.qll",
     "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImpl3.qll",
     "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImpl4.qll",
     "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImplLocal.qll",
-    "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl.qll",
+    "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl1.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl2.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl3.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl4.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl2.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl3.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/DataFlowImpl4.qll",
-    "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImpl.qll",
+    "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImpl1.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImpl2.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImpl3.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImpl4.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImpl5.qll",
-    "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImplForContentDataFlow.qll",
-    "go/ql/lib/semmle/go/dataflow/internal/DataFlowImpl.qll",
+    "go/ql/lib/semmle/go/dataflow/internal/DataFlowImpl1.qll",
     "go/ql/lib/semmle/go/dataflow/internal/DataFlowImpl2.qll",
-    "python/ql/lib/semmle/python/dataflow/new/internal/DataFlowImpl.qll",
+    "python/ql/lib/semmle/python/dataflow/new/internal/DataFlowImpl1.qll",
     "python/ql/lib/semmle/python/dataflow/new/internal/DataFlowImpl2.qll",
     "python/ql/lib/semmle/python/dataflow/new/internal/DataFlowImpl3.qll",
     "python/ql/lib/semmle/python/dataflow/new/internal/DataFlowImpl4.qll",
-    "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImpl.qll",
+    "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImpl1.qll",
     "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImpl2.qll",
-    "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImplForRegExp.qll",
-    "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImplForHttpClientLibraries.qll",
-    "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImplForPathname.qll",
-    "swift/ql/lib/codeql/swift/dataflow/internal/DataFlowImpl.qll"
+    "swift/ql/lib/codeql/swift/dataflow/internal/DataFlowImpl1.qll"
   ],
-  "DataFlow Java/C++/C#/Go/Python/Ruby/Swift Common": [
-    "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImplCommon.qll",
-    "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImplCommon.qll",
-    "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/DataFlowImplCommon.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/DataFlowImplCommon.qll",
-    "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImplCommon.qll",
-    "go/ql/lib/semmle/go/dataflow/internal/DataFlowImplCommon.qll",
-    "python/ql/lib/semmle/python/dataflow/new/internal/DataFlowImplCommon.qll",
-    "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImplCommon.qll",
-    "swift/ql/lib/codeql/swift/dataflow/internal/DataFlowImplCommon.qll"
-  ],
-  "TaintTracking::Configuration Java/C++/C#/Go/Python/Ruby/Swift": [
+  "TaintTracking Legacy Configuration Java/C++/C#/Go/Python/Ruby/Swift": [
     "cpp/ql/lib/semmle/code/cpp/dataflow/internal/tainttracking1/TaintTrackingImpl.qll",
     "cpp/ql/lib/semmle/code/cpp/dataflow/internal/tainttracking2/TaintTrackingImpl.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/tainttracking1/TaintTrackingImpl.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/tainttracking2/TaintTrackingImpl.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/tainttracking3/TaintTrackingImpl.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/tainttracking1/TaintTrackingImpl.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/tainttracking2/TaintTrackingImpl.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/tainttracking3/TaintTrackingImpl.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/tainttracking1/TaintTrackingImpl.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/tainttracking2/TaintTrackingImpl.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/tainttracking3/TaintTrackingImpl.qll",
@@ -77,16 +53,6 @@
     "ruby/ql/lib/codeql/ruby/dataflow/internal/tainttracking1/TaintTrackingImpl.qll",
     "swift/ql/lib/codeql/swift/dataflow/internal/tainttracking1/TaintTrackingImpl.qll"
   ],
-  "DataFlow Java/C++/C#/Python/Ruby/Swift Consistency checks": [
-    "java/ql/lib/semmle/code/java/dataflow/internal/DataFlowImplConsistency.qll",
-    "cpp/ql/lib/semmle/code/cpp/dataflow/internal/DataFlowImplConsistency.qll",
-    "cpp/ql/lib/semmle/code/cpp/ir/dataflow/internal/DataFlowImplConsistency.qll",
-    "cpp/ql/lib/experimental/semmle/code/cpp/ir/dataflow/internal/DataFlowImplConsistency.qll",
-    "csharp/ql/lib/semmle/code/csharp/dataflow/internal/DataFlowImplConsistency.qll",
-    "python/ql/lib/semmle/python/dataflow/new/internal/DataFlowImplConsistency.qll",
-    "ruby/ql/lib/codeql/ruby/dataflow/internal/DataFlowImplConsistency.qll",
-    "swift/ql/lib/codeql/swift/dataflow/internal/DataFlowImplConsistency.qll"
-  ],
   "DataFlow Java/C#/Go/Ruby/Python/Swift Flow Summaries": [
     "java/ql/lib/semmle/code/java/dataflow/internal/FlowSummaryImpl.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/FlowSummaryImpl.qll",
@@ -102,6 +68,10 @@
   "Model as Data Generation Java/C# - CaptureModels": [
     "java/ql/src/utils/modelgenerator/internal/CaptureModels.qll",
     "csharp/ql/src/utils/modelgenerator/internal/CaptureModels.qll"
+  ],
+  "Model as Data Generation Java/C# - CaptureModelsPrinting": [
+    "java/ql/src/utils/modelgenerator/internal/CaptureModelsPrinting.qll",
+    "csharp/ql/src/utils/modelgenerator/internal/CaptureModelsPrinting.qll"
   ],
   "Sign Java/C#": [
     "java/ql/lib/semmle/code/java/dataflow/internal/rangeanalysis/Sign.qll",
@@ -259,6 +229,11 @@
     "cpp/ql/lib/semmle/code/cpp/ir/implementation/unaliased_ssa/internal/IRBlockImports.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/implementation/aliased_ssa/internal/IRBlockImports.qll"
   ],
+  "C++ IR IRConsistencyImports": [
+    "cpp/ql/lib/semmle/code/cpp/ir/implementation/raw/internal/IRConsistencyImports.qll",
+    "cpp/ql/lib/semmle/code/cpp/ir/implementation/unaliased_ssa/internal/IRConsistencyImports.qll",
+    "cpp/ql/lib/semmle/code/cpp/ir/implementation/aliased_ssa/internal/IRConsistencyImports.qll"
+  ],
   "C++ IR IRFunctionImports": [
     "cpp/ql/lib/semmle/code/cpp/ir/implementation/raw/internal/IRFunctionImports.qll",
     "cpp/ql/lib/semmle/code/cpp/ir/implementation/unaliased_ssa/internal/IRFunctionImports.qll",
@@ -402,16 +377,6 @@
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/ControlFlowReachability.qll",
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/rangeanalysis/ControlFlowReachability.qll"
   ],
-  "Inline Test Expectations": [
-    "cpp/ql/test/TestUtilities/InlineExpectationsTest.qll",
-    "csharp/ql/test/TestUtilities/InlineExpectationsTest.qll",
-    "java/ql/test/TestUtilities/InlineExpectationsTest.qll",
-    "python/ql/test/TestUtilities/InlineExpectationsTest.qll",
-    "ruby/ql/test/TestUtilities/InlineExpectationsTest.qll",
-    "ql/ql/test/TestUtilities/InlineExpectationsTest.qll",
-    "go/ql/test/TestUtilities/InlineExpectationsTest.qll",
-    "swift/ql/test/TestUtilities/InlineExpectationsTest.qll"
-  ],
   "C++ ExternalAPIs": [
     "cpp/ql/src/Security/CWE/CWE-020/ExternalAPIs.qll",
     "cpp/ql/src/Security/CWE/CWE-020/ir/ExternalAPIs.qll"
@@ -470,6 +435,10 @@
     "javascript/ql/src/Comments/CommentedOutCodeReferences.inc.qhelp",
     "python/ql/src/Lexical/CommentedOutCodeReferences.inc.qhelp"
   ],
+  "ThreadResourceAbuse qhelp": [
+    "java/ql/src/experimental/Security/CWE/CWE-400/LocalThreadResourceAbuse.qhelp",
+    "java/ql/src/experimental/Security/CWE/CWE-400/ThreadResourceAbuse.qhelp"
+  ],
   "IDE Contextual Queries": [
     "cpp/ql/lib/IDEContextual.qll",
     "csharp/ql/lib/IDEContextual.qll",
@@ -490,24 +459,16 @@
   "SensitiveDataHeuristics Python/JS": [
     "javascript/ql/lib/semmle/javascript/security/internal/SensitiveDataHeuristics.qll",
     "python/ql/lib/semmle/python/security/internal/SensitiveDataHeuristics.qll",
-    "ruby/ql/lib/codeql/ruby/security/internal/SensitiveDataHeuristics.qll"
-  ],
-  "CFG": [
-    "csharp/ql/lib/semmle/code/csharp/controlflow/internal/ControlFlowGraphImplShared.qll",
-    "ruby/ql/lib/codeql/ruby/controlflow/internal/ControlFlowGraphImplShared.qll",
-    "swift/ql/lib/codeql/swift/controlflow/internal/ControlFlowGraphImplShared.qll"
+    "ruby/ql/lib/codeql/ruby/security/internal/SensitiveDataHeuristics.qll",
+    "swift/ql/lib/codeql/swift/security/internal/SensitiveDataHeuristics.qll"
   ],
   "TypeTracker": [
     "python/ql/lib/semmle/python/dataflow/new/internal/TypeTracker.qll",
     "ruby/ql/lib/codeql/ruby/typetracking/TypeTracker.qll"
   ],
-  "CodeQL Tutorial": [
-    "cpp/ql/lib/tutorial.qll",
-    "csharp/ql/lib/tutorial.qll",
-    "java/ql/lib/tutorial.qll",
-    "javascript/ql/lib/tutorial.qll",
-    "python/ql/lib/tutorial.qll",
-    "ruby/ql/lib/tutorial.qll"
+  "SummaryTypeTracker": [
+    "python/ql/lib/semmle/python/dataflow/new/internal/SummaryTypeTracker.qll",
+    "ruby/ql/lib/codeql/ruby/typetracking/internal/SummaryTypeTracker.qll"
   ],
   "AccessPathSyntax": [
     "csharp/ql/lib/semmle/code/csharp/dataflow/internal/AccessPathSyntax.qll",
@@ -527,31 +488,15 @@
     "ruby/ql/lib/codeql/ruby/internal/ConceptsShared.qll",
     "javascript/ql/lib/semmle/javascript/internal/ConceptsShared.qll"
   ],
-  "Hostname Regexp queries": [
-    "javascript/ql/src/Security/CWE-020/HostnameRegexpShared.qll",
-    "python/ql/src/Security/CWE-020/HostnameRegexpShared.qll",
-    "ruby/ql/src/queries/security/cwe-020/HostnameRegexpShared.qll"
-  ],
   "ApiGraphModels": [
     "javascript/ql/lib/semmle/javascript/frameworks/data/internal/ApiGraphModels.qll",
     "ruby/ql/lib/codeql/ruby/frameworks/data/internal/ApiGraphModels.qll",
     "python/ql/lib/semmle/python/frameworks/data/internal/ApiGraphModels.qll"
   ],
-  "TaintedFormatStringQuery Ruby/JS": [
-    "javascript/ql/lib/semmle/javascript/security/dataflow/TaintedFormatStringQuery.qll",
-    "ruby/ql/lib/codeql/ruby/security/TaintedFormatStringQuery.qll"
-  ],
-  "TaintedFormatStringCustomizations Ruby/JS": [
-    "javascript/ql/lib/semmle/javascript/security/dataflow/TaintedFormatStringCustomizations.qll",
-    "ruby/ql/lib/codeql/ruby/security/TaintedFormatStringCustomizations.qll"
-  ],
-  "HttpToFileAccessQuery JS/Ruby": [
-    "javascript/ql/lib/semmle/javascript/security/dataflow/HttpToFileAccessQuery.qll",
-    "ruby/ql/lib/codeql/ruby/security/HttpToFileAccessQuery.qll"
-  ],
-  "HttpToFileAccessCustomizations JS/Ruby": [
-    "javascript/ql/lib/semmle/javascript/security/dataflow/HttpToFileAccessCustomizations.qll",
-    "ruby/ql/lib/codeql/ruby/security/HttpToFileAccessCustomizations.qll"
+  "ApiGraphModelsExtensions": [
+    "javascript/ql/lib/semmle/javascript/frameworks/data/internal/ApiGraphModelsExtensions.qll",
+    "ruby/ql/lib/codeql/ruby/frameworks/data/internal/ApiGraphModelsExtensions.qll",
+    "python/ql/lib/semmle/python/frameworks/data/internal/ApiGraphModelsExtensions.qll"
   ],
   "Typo database": [
     "javascript/ql/src/Expressions/TypoDatabase.qll",
@@ -580,5 +525,13 @@
   "IncompleteMultiCharacterSanitization JS/Ruby": [
     "javascript/ql/lib/semmle/javascript/security/IncompleteMultiCharacterSanitizationQuery.qll",
     "ruby/ql/lib/codeql/ruby/security/IncompleteMultiCharacterSanitizationQuery.qll"
+  ],
+  "EncryptionKeySizes Python/Java": [
+    "python/ql/lib/semmle/python/security/internal/EncryptionKeySizes.qll",
+    "java/ql/lib/semmle/code/java/security/internal/EncryptionKeySizes.qll"
+  ],
+  "Python model summaries test extension": [
+    "python/ql/test/experimental/dataflow/model-summaries/InlineTaintTest.ext.yml",
+    "python/ql/test/experimental/dataflow/model-summaries/NormalDataflowTest.ext.yml"
   ]
 }

@@ -25,9 +25,6 @@ class HttpsUrlConnection extends RefType {
   HttpsUrlConnection() { this.hasQualifiedName("javax.net.ssl", "HttpsURLConnection") }
 }
 
-/** DEPRECATED: Alias for HttpsUrlConnection */
-deprecated class HttpsURLConnection = HttpsUrlConnection;
-
 class SslSocketFactory extends RefType {
   SslSocketFactory() { this.hasQualifiedName("javax.net.ssl", "SSLSocketFactory") }
 }
@@ -143,9 +140,18 @@ class CreateSslEngineMethod extends Method {
   }
 }
 
+/** The `setConnectionFactory` method of the class `javax.net.ssl.HttpsURLConnection`. */
 class SetConnectionFactoryMethod extends Method {
   SetConnectionFactoryMethod() {
     this.hasName("setSSLSocketFactory") and
+    this.getDeclaringType().getAnAncestor() instanceof HttpsUrlConnection
+  }
+}
+
+/** The `setDefaultConnectionFactory` method of the class `javax.net.ssl.HttpsURLConnection`. */
+class SetDefaultConnectionFactoryMethod extends Method {
+  SetDefaultConnectionFactoryMethod() {
+    this.hasName("setDefaultSSLSocketFactory") and
     this.getDeclaringType().getAnAncestor() instanceof HttpsUrlConnection
   }
 }
@@ -264,7 +270,7 @@ string getInsecureAlgorithmRegex() {
 string getASecureAlgorithmName() {
   result =
     [
-      "RSA", "SHA256", "SHA512", "CCM", "GCM", "AES(?![^a-zA-Z](ECB|CBC/PKCS[57]Padding))",
+      "RSA", "SHA-?256", "SHA-?512", "CCM", "GCM", "AES(?![^a-zA-Z](ECB|CBC/PKCS[57]Padding))",
       "Blowfish", "ECIES"
     ]
 }
@@ -290,9 +296,7 @@ string getSecureAlgorithmRegex() {
  * algorithm. For example, methods returning ciphers, decryption methods,
  * constructors of cipher classes, etc.
  */
-abstract class CryptoAlgoSpec extends Top {
-  CryptoAlgoSpec() { this instanceof Call }
-
+abstract class CryptoAlgoSpec extends Top instanceof Call {
   abstract Expr getAlgoSpec();
 }
 
@@ -306,7 +310,7 @@ class JavaxCryptoCipher extends JavaxCryptoAlgoSpec {
     )
   }
 
-  override Expr getAlgoSpec() { result = this.(MethodAccess).getArgument(0) }
+  override Expr getAlgoSpec() { result = this.(MethodCall).getArgument(0) }
 }
 
 class JavaxCryptoSecretKey extends JavaxCryptoAlgoSpec {
@@ -331,7 +335,7 @@ class JavaxCryptoKeyGenerator extends JavaxCryptoAlgoSpec {
     )
   }
 
-  override Expr getAlgoSpec() { result = this.(MethodAccess).getArgument(0) }
+  override Expr getAlgoSpec() { result = this.(MethodCall).getArgument(0) }
 }
 
 class JavaxCryptoKeyAgreement extends JavaxCryptoAlgoSpec {
@@ -342,7 +346,7 @@ class JavaxCryptoKeyAgreement extends JavaxCryptoAlgoSpec {
     )
   }
 
-  override Expr getAlgoSpec() { result = this.(MethodAccess).getArgument(0) }
+  override Expr getAlgoSpec() { result = this.(MethodCall).getArgument(0) }
 }
 
 class JavaxCryptoKeyFactory extends JavaxCryptoAlgoSpec {
@@ -353,7 +357,7 @@ class JavaxCryptoKeyFactory extends JavaxCryptoAlgoSpec {
     )
   }
 
-  override Expr getAlgoSpec() { result = this.(MethodAccess).getArgument(0) }
+  override Expr getAlgoSpec() { result = this.(MethodCall).getArgument(0) }
 }
 
 abstract class JavaSecurityAlgoSpec extends CryptoAlgoSpec { }
@@ -392,7 +396,7 @@ class JavaSecurityKeyPairGenerator extends JavaSecurityAlgoSpec {
     )
   }
 
-  override Expr getAlgoSpec() { result = this.(MethodAccess).getArgument(0) }
+  override Expr getAlgoSpec() { result = this.(MethodCall).getArgument(0) }
 }
 
 /** The Java class `java.security.AlgorithmParameterGenerator`. */
@@ -419,7 +423,7 @@ class JavaSecurityAlgoParamGenerator extends JavaSecurityAlgoSpec {
     )
   }
 
-  override Expr getAlgoSpec() { result = this.(MethodAccess).getArgument(0) }
+  override Expr getAlgoSpec() { result = this.(MethodCall).getArgument(0) }
 }
 
 /** An implementation of the `java.security.spec.AlgorithmParameterSpec` interface. */

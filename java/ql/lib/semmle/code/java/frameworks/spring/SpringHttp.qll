@@ -4,7 +4,6 @@
  */
 
 import java
-private import semmle.code.java.dataflow.ExternalFlow
 private import semmle.code.java.dataflow.DataFlow
 private import semmle.code.java.frameworks.spring.SpringController
 private import semmle.code.java.security.XSS as XSS
@@ -165,14 +164,14 @@ private predicate isXssSafeContentTypeExpr(Expr e) {
 
 private DataFlow::Node getABodyBuilderWithExplicitContentType(Expr contentType) {
   result.asExpr() =
-    any(MethodAccess ma |
+    any(MethodCall ma |
       ma.getCallee()
           .hasQualifiedName("org.springframework.http", "ResponseEntity$BodyBuilder", "contentType") and
       contentType = ma.getArgument(0)
     )
   or
   result.asExpr() =
-    any(MethodAccess ma |
+    any(MethodCall ma |
       ma.getQualifier() = getABodyBuilderWithExplicitContentType(contentType).asExpr() and
       ma.getType()
           .(RefType)
@@ -193,7 +192,7 @@ private DataFlow::Node getAVulnerableBodyBuilder() {
 private class SanitizedBodyCall extends XSS::XssSanitizer {
   SanitizedBodyCall() {
     this.asExpr() =
-      any(MethodAccess ma |
+      any(MethodCall ma |
         ma.getQualifier() = getASanitizedBodyBuilder().asExpr() and
         ma.getCallee().hasName("body")
       ).getArgument(0)
@@ -211,7 +210,7 @@ private class SanitizedBodyCall extends XSS::XssSanitizer {
 private class ExplicitlyVulnerableBodyArgument extends XSS::XssSinkBarrier {
   ExplicitlyVulnerableBodyArgument() {
     this.asExpr() =
-      any(MethodAccess ma |
+      any(MethodCall ma |
         ma.getQualifier() = getAVulnerableBodyBuilder().asExpr() and
         ma.getCallee().hasName("body")
       ).getArgument(0)

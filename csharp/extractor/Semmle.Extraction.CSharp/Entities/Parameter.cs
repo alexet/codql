@@ -1,10 +1,10 @@
-using Microsoft.CodeAnalysis;
-using Semmle.Extraction.CSharp.Populators;
-using System.Linq;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Semmle.Extraction.Entities;
-using System.IO;
 using System;
+using System.IO;
+using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Semmle.Extraction.CSharp.Populators;
+using Semmle.Extraction.Entities;
 
 namespace Semmle.Extraction.CSharp.Entities
 {
@@ -100,6 +100,7 @@ namespace Semmle.Extraction.CSharp.Entities
             PopulateAttributes();
             PopulateNullability(trapFile, Symbol.GetAnnotatedType());
             PopulateRefKind(trapFile, Symbol.RefKind);
+            PopulateScopedKind(trapFile, Symbol.ScopedKind);
 
             if (Symbol.Name != Original.Symbol.Name)
                 Context.ModelError(Symbol, "Inconsistent parameter declaration");

@@ -10,7 +10,10 @@ module RegExpInjection {
   /**
    * A data flow source for untrusted user input used to construct regular expressions.
    */
-  abstract class Source extends DataFlow::Node { }
+  abstract class Source extends DataFlow::Node {
+    /** Gets a description of this source. */
+    string describe() { result = "user-provided value" }
+  }
 
   /**
    * A data flow sink for untrusted user input used to construct regular expressions.
@@ -26,11 +29,18 @@ module RegExpInjection {
    * A source of remote user input, considered as a flow source for regular
    * expression injection.
    */
-  class RemoteFlowSourceAsSource extends Source {
-    RemoteFlowSourceAsSource() {
-      this instanceof RemoteFlowSource and
-      not this instanceof ClientSideRemoteFlowSource
-    }
+  class RemoteFlowSourceAsSource extends Source instanceof RemoteFlowSource {
+    RemoteFlowSourceAsSource() { not this instanceof ClientSideRemoteFlowSource }
+  }
+
+  private import IndirectCommandInjectionCustomizations
+
+  /**
+   * A read of `process.env`, `process.argv`, and similar, considered as a flow source for regular
+   * expression injection.
+   */
+  class ArgvAsSource extends Source instanceof IndirectCommandInjection::Source {
+    override string describe() { result = IndirectCommandInjection::Source.super.describe() }
   }
 
   /**
@@ -62,12 +72,12 @@ module RegExpInjection {
    */
   class MetacharEscapeSanitizer extends Sanitizer, StringReplaceCall {
     MetacharEscapeSanitizer() {
-      isGlobal() and
+      this.isGlobal() and
       (
-        RegExp::alwaysMatchesMetaCharacter(getRegExp().getRoot(), ["{", "[", "+"])
+        RegExp::alwaysMatchesMetaCharacter(this.getRegExp().getRoot(), ["{", "[", "+"])
         or
         // or it's like a wild-card.
-        RegExp::isWildcardLike(getRegExp().getRoot())
+        RegExp::isWildcardLike(this.getRegExp().getRoot())
       )
     }
   }

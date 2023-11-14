@@ -60,10 +60,23 @@ def test_import():
 def to_inner_scope():
     x = tracked # $tracked
     def foo():
-        y = x # $ MISSING: tracked
-        return y # $ MISSING: tracked
-    also_x = foo() # $ MISSING: tracked
-    print(also_x) # $ MISSING: tracked
+        y = x # $ tracked
+        return y # $ tracked
+    also_x = foo() # $ tracked
+    print(also_x) # $ tracked
+
+
+def from_parameter_default():
+    x_alias = tracked # $tracked
+    def outer(x=tracked): # $tracked
+        print(x) # $tracked
+        def inner():
+            print(x) # $ tracked
+            print(x_alias) # $tracked
+        return x # $tracked
+    also_x = outer() # $tracked
+    print(also_x) # $tracked
+
 
 # ------------------------------------------------------------------------------
 # Function decorator
@@ -91,7 +104,7 @@ def unrelated_func():
     return "foo"
 
 def use_funcs_with_decorators():
-    x = get_tracked2() # $ MISSING: tracked
+    x = get_tracked2() # $ tracked
     y = unrelated_func()
 
 # ------------------------------------------------------------------------------
@@ -117,11 +130,11 @@ class Foo(object):
     def meth1(self):
         do_stuff(self)
 
-    def meth2(self): # $ MISSING: tracked_self
-        do_stuff(self) # $ MISSING: tracked_self
+    def meth2(self): # $ tracked_self
+        do_stuff(self) # $ tracked_self
 
-    def meth3(self): # $ MISSING: tracked_self
-        do_stuff(self) # $ MISSING: tracked_self
+    def meth3(self): # $ tracked_self
+        do_stuff(self) # $ tracked_self
 
 
 class Bar(Foo):
@@ -182,3 +195,42 @@ class MyClass(object):
     def with_global_modifier(self):
         global some_value
         print(some_value) # $ tracked
+
+# ------------------------------------------------------------------------------
+# yield
+# ------------------------------------------------------------------------------
+
+def yielding_function():
+    x = tracked # $ tracked
+    yield x # $ tracked
+
+def test_yield():
+    for x in yielding_function(): # $ MISSING: tracked
+        print(x) # $ MISSING: tracked
+
+    gen = yielding_function()
+    y = next(gen) # $ MISSING: tracked
+    print(y) # $ MISSING: tracked
+
+
+# see https://docs.python.org/3.11/library/contextlib.html#contextlib.contextmanager
+from contextlib import contextmanager
+import contextlib
+
+@contextmanager
+def managed_resource():
+    x = tracked # $ tracked
+    yield x # $ tracked
+
+def test_context_manager():
+    with managed_resource() as x: # $ tracked
+        print(x) # $ tracked
+
+@contextlib.contextmanager
+def managed_resource2():
+    x = tracked # $ tracked
+    yield x # $ tracked
+
+def test_context_manager2():
+    with managed_resource2() as x: # $ tracked
+        print(x) # $ tracked

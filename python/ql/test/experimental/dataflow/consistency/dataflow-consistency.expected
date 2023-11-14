@@ -1,9 +1,9 @@
 uniqueEnclosingCallable
+uniqueCallEnclosingCallable
 uniqueType
 uniqueNodeLocation
 missingLocation
 uniqueNodeToString
-missingToString
 parameterCallable
 localFlowIsLocal
 readStepIsLocal
@@ -19,3 +19,9 @@ reverseRead
 argHasPostUpdate
 postWithInFlow
 viableImplInCallContextTooLarge
+uniqueParameterNodeAtPosition
+uniqueParameterNodePosition
+uniqueContentApprox
+identityLocalStep
+missingArgumentCall
+multipleArgumentCall

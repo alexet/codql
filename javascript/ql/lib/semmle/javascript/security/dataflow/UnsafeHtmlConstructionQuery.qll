@@ -7,16 +7,26 @@ import javascript
 private import semmle.javascript.security.dataflow.DomBasedXssCustomizations::DomBasedXss as DomBasedXss
 private import semmle.javascript.security.dataflow.UnsafeJQueryPluginCustomizations::UnsafeJQueryPlugin as UnsafeJQueryPlugin
 import UnsafeHtmlConstructionCustomizations::UnsafeHtmlConstruction
+import semmle.javascript.security.TaintedObject
+
+/** DEPRECATED: Mis-spelled class name, alias for Configuration. */
+deprecated class Configration = Configuration;
 
 /**
  * A taint-tracking configuration for reasoning about unsafe HTML constructed from library input vulnerabilities.
  */
-class Configration extends TaintTracking::Configuration {
-  Configration() { this = "UnsafeHtmlConstruction" }
+class Configuration extends TaintTracking::Configuration {
+  Configuration() { this = "UnsafeHtmlConstruction" }
 
-  override predicate isSource(DataFlow::Node source) { source instanceof Source }
+  override predicate isSource(DataFlow::Node source, DataFlow::FlowLabel label) {
+    source instanceof Source and
+    label = [TaintedObject::label(), DataFlow::FlowLabel::taint(), DataFlow::FlowLabel::data()]
+  }
 
-  override predicate isSink(DataFlow::Node sink) { sink instanceof Sink }
+  override predicate isSink(DataFlow::Node sink, DataFlow::FlowLabel label) {
+    sink instanceof Sink and
+    label = DataFlow::FlowLabel::taint()
+  }
 
   override predicate isSanitizer(DataFlow::Node node) {
     super.isSanitizer(node)
@@ -24,10 +34,8 @@ class Configration extends TaintTracking::Configuration {
     node instanceof DomBasedXss::Sanitizer
     or
     node instanceof UnsafeJQueryPlugin::Sanitizer
-  }
-
-  override predicate isSanitizerEdge(DataFlow::Node pred, DataFlow::Node succ) {
-    DomBasedXss::isOptionallySanitizedEdge(pred, succ)
+    or
+    DomBasedXss::isOptionallySanitizedNode(node)
   }
 
   // override to require that there is a path without unmatched return steps
@@ -36,12 +44,22 @@ class Configration extends TaintTracking::Configuration {
     DataFlow::hasPathWithoutUnmatchedReturn(source, sink)
   }
 
-  override predicate isAdditionalTaintStep(DataFlow::Node pred, DataFlow::Node succ) {
-    DataFlow::localFieldStep(pred, succ)
+  override predicate isAdditionalFlowStep(
+    DataFlow::Node pred, DataFlow::Node succ, DataFlow::FlowLabel inlbl, DataFlow::FlowLabel outlbl
+  ) {
+    DataFlow::localFieldStep(pred, succ) and
+    inlbl.isTaint() and
+    outlbl.isTaint()
+    or
+    TaintedObject::step(pred, succ, inlbl, outlbl)
+    or
+    // property read from a tainted object is considered tainted
+    succ.(DataFlow::PropRead).getBase() = pred and
+    inlbl = TaintedObject::label() and
+    outlbl = DataFlow::FlowLabel::taint()
   }
 
   override predicate isSanitizerGuard(TaintTracking::SanitizerGuardNode guard) {
-    guard instanceof PrefixStringSanitizer or
     guard instanceof QuoteGuard or
     guard instanceof ContainsHtmlGuard or
     guard instanceof TypeTestGuard
@@ -50,19 +68,11 @@ class Configration extends TaintTracking::Configuration {
 
 private import semmle.javascript.security.dataflow.Xss::Shared as Shared
 
-private class PrefixStringSanitizer extends TaintTracking::SanitizerGuardNode,
-  DomBasedXss::PrefixStringSanitizer {
-  PrefixStringSanitizer() { this = this }
-}
-
-private class PrefixString extends DataFlow::FlowLabel, DomBasedXss::PrefixString {
-  PrefixString() { this = this }
-}
-
 private class QuoteGuard extends TaintTracking::SanitizerGuardNode, Shared::QuoteGuard {
   QuoteGuard() { this = this }
 }
 
-private class ContainsHtmlGuard extends TaintTracking::SanitizerGuardNode, Shared::ContainsHtmlGuard {
+private class ContainsHtmlGuard extends TaintTracking::SanitizerGuardNode, Shared::ContainsHtmlGuard
+{
   ContainsHtmlGuard() { this = this }
 }

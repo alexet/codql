@@ -2,8 +2,8 @@
  * Provides Go-specific definitions for use in the data flow library.
  */
 
-import go
-import semmle.go.dataflow.FunctionInputsAndOutputs
+private import go
+private import semmle.go.dataflow.FunctionInputsAndOutputs
 private import semmle.go.dataflow.ExternalFlow
 private import DataFlowPrivate
 private import FlowSummaryImpl as FlowSummaryImpl
@@ -124,7 +124,8 @@ predicate simpleLocalFlowStep(Node nodeFrom, Node nodeTo) {
   // step through function model
   any(FunctionModel m).flowStep(nodeFrom, nodeTo)
   or
-  FlowSummaryImpl::Private::Steps::summaryLocalStep(nodeFrom, nodeTo, true)
+  FlowSummaryImpl::Private::Steps::summaryLocalStep(nodeFrom.(FlowSummaryNode).getSummaryNode(),
+    nodeTo.(FlowSummaryNode).getSummaryNode(), true)
 }
 
 /**
@@ -149,7 +150,7 @@ private newtype TContent =
  */
 class Content extends TContent {
   /** Gets the type of the contained data for the purpose of type pruning. */
-  DataFlowType getType() { result instanceof EmptyInterfaceType }
+  DataFlowType getType() { any() }
 
   /** Gets a textual representation of this element. */
   abstract string toString();
@@ -177,7 +178,7 @@ class FieldContent extends Content, TFieldContent {
   /** Gets the field associated with this `FieldContent`. */
   Field getField() { result = f }
 
-  override DataFlowType getType() { result = f.getType() }
+  override DataFlowType getType() { any() }
 
   override string toString() { result = f.toString() }
 
@@ -205,7 +206,7 @@ class PointerContent extends Content, TPointerContent {
   /** Gets the pointer type that containers with this content must have. */
   PointerType getPointerType() { result = t }
 
-  override DataFlowType getType() { result = t.getBaseType() }
+  override DataFlowType getType() { any() }
 
   override string toString() { result = "pointer" }
 }
@@ -228,7 +229,7 @@ class SyntheticFieldContent extends Content, TSyntheticFieldContent {
   /** Gets the field associated with this `SyntheticFieldContent`. */
   SyntheticField getField() { result = s }
 
-  override DataFlowType getType() { result = s.getType() }
+  override DataFlowType getType() { any() }
 
   override string toString() { result = s.toString() }
 }
@@ -281,10 +282,8 @@ signature predicate guardChecksSig(Node g, Expr e, boolean branch);
 module BarrierGuard<guardChecksSig/3 guardChecks> {
   /** Gets a node that is safely guarded by the given guard check. */
   Node getABarrierNode() {
-    exists(Node g, ControlFlow::ConditionGuardNode guard, Node nd, SsaWithFields var |
-      result = var.getAUse()
-    |
-      guards(g, guard, nd, var) and
+    exists(ControlFlow::ConditionGuardNode guard, SsaWithFields var | result = var.getAUse() |
+      guards(_, guard, _, var) and
       guard.dominates(result.getBasicBlock())
     )
   }
@@ -293,10 +292,8 @@ module BarrierGuard<guardChecksSig/3 guardChecks> {
    * Gets a node that is safely guarded by the given guard check.
    */
   Node getABarrierNodeForGuard(Node guardCheck) {
-    exists(ControlFlow::ConditionGuardNode guard, Node nd, SsaWithFields var |
-      result = var.getAUse()
-    |
-      guards(guardCheck, guard, nd, var) and
+    exists(ControlFlow::ConditionGuardNode guard, SsaWithFields var | result = var.getAUse() |
+      guards(guardCheck, guard, _, var) and
       guard.dominates(result.getBasicBlock())
     )
   }
@@ -322,11 +319,8 @@ module BarrierGuard<guardChecksSig/3 guardChecks> {
       guard.ensures(g, branch)
     )
     or
-    exists(
-      Function f, FunctionInput inp, FunctionOutput outp, DataFlow::Property p, CallNode c,
-      Node resNode, Node check, boolean outcome
-    |
-      guardingCall(g, f, inp, outp, p, c, nd, resNode) and
+    exists(DataFlow::Property p, Node resNode, Node check, boolean outcome |
+      guardingCall(g, _, _, _, p, _, nd, resNode) and
       p.checkOn(check, outcome, resNode) and
       guard.ensures(pragma[only_bind_into](check), outcome)
     )
@@ -411,34 +405,6 @@ module BarrierGuard<guardChecksSig/3 guardChecks> {
       )
     )
   }
-}
-
-/**
- * DEPRECATED: Use `BarrierGuard` module instead.
- *
- * A guard that validates some expression.
- *
- * To use this in a configuration, extend the class and provide a
- * characteristic predicate precisely specifying the guard, and override
- * `checks` to specify what is being validated and in which branch.
- *
- * When using a data-flow or taint-flow configuration `cfg`, it is important
- * that any classes extending BarrierGuard in scope which are not used in `cfg`
- * are disjoint from any classes extending BarrierGuard in scope which are used
- * in `cfg`.
- */
-abstract deprecated class BarrierGuard extends Node {
-  /** Holds if this guard validates `e` upon evaluating to `branch`. */
-  abstract predicate checks(Expr e, boolean branch);
-
-  /** Gets a node guarded by this guard. */
-  final Node getAGuardedNode() {
-    result = BarrierGuard<barrierGuardChecks/3>::getABarrierNodeForGuard(this)
-  }
-}
-
-deprecated private predicate barrierGuardChecks(Node g, Expr e, boolean branch) {
-  g.(BarrierGuard).checks(e, branch)
 }
 
 DataFlow::Node getUniqueOutputNode(FuncDecl fd, FunctionOutput outp) {

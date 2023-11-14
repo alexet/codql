@@ -22,14 +22,27 @@
 private import javascript as JS
 private import ApiGraphModels
 
-class Unit = JS::Unit;
-
 // Re-export libraries needed by ApiGraphModels.qll
 module API = JS::API;
 
 import semmle.javascript.frameworks.data.internal.AccessPathSyntax as AccessPathSyntax
 import JS::DataFlow as DataFlow
 private import AccessPathSyntax
+
+/**
+ * Holds if `rawType` represents the JavaScript type `qualifiedName` from the given NPM `package`.
+ *
+ * Type names have form `package.type` or just `package` if referring to the package export
+ * object. If `package` contains a `.` character it must be enclosed in single quotes, such as `'package'.type`.
+ */
+bindingset[rawType]
+predicate parseTypeString(string rawType, string package, string qualifiedName) {
+  exists(string regexp |
+    regexp = "('[^']+'|[^.]+)(.*)" and
+    package = rawType.regexpCapture(regexp, 1).regexpReplaceAll("^'|'$", "") and
+    qualifiedName = rawType.regexpCapture(regexp, 2).regexpReplaceAll("^\\.", "")
+  )
+}
 
 /**
  * Holds if models describing `package` may be relevant for the analysis of this database.
@@ -42,10 +55,30 @@ predicate isPackageUsed(string package) {
   any(DataFlow::SourceNode sn).hasUnderlyingType(package, _)
 }
 
+bindingset[type]
+predicate isTypeUsed(string type) {
+  exists(string package |
+    parseTypeString(type, package, _) and
+    isPackageUsed(package)
+  )
+}
+
+/**
+ * Holds if `type` can be obtained from an instance of `otherType` due to
+ * language semantics modeled by `getExtraNodeFromType`.
+ */
+predicate hasImplicitTypeModel(string type, string otherType) { none() }
+
+pragma[nomagic]
+private predicate parseRelevantTypeString(string rawType, string package, string qualifiedName) {
+  isRelevantFullPath(rawType, _) and
+  parseTypeString(rawType, package, qualifiedName)
+}
+
 /** Holds if `global` is a global variable referenced via a the `global` package in a CSV row. */
 private predicate isRelevantGlobal(string global) {
   exists(AccessPath path, AccessPathToken token |
-    isRelevantFullPath("global", "", path) and
+    isRelevantFullPath("global", path) and
     token = path.getToken(0) and
     token.getName() = "Member" and
     global = token.getAnArgument()
@@ -74,13 +107,12 @@ private API::Node getGlobalNode(string globalName) {
   result = any(GlobalApiEntryPoint e | e.getGlobal() = globalName).getANode()
 }
 
-/** Gets a JavaScript-specific interpretation of the `(package, type, path)` tuple after resolving the first `n` access path tokens. */
-bindingset[package, type, path]
-API::Node getExtraNodeFromPath(string package, string type, AccessPath path, int n) {
+/** Gets a JavaScript-specific interpretation of the `(type, path)` tuple after resolving the first `n` access path tokens. */
+bindingset[type, path]
+API::Node getExtraNodeFromPath(string type, AccessPath path, int n) {
   // Global variable accesses is via the 'global' package
   exists(AccessPathToken token |
-    package = getAPackageAlias("global") and
-    type = "" and
+    type = "global" and
     token = path.getToken(0) and
     token.getName() = "Member" and
     result = getGlobalNode(token.getAnArgument()) and
@@ -89,12 +121,16 @@ API::Node getExtraNodeFromPath(string package, string type, AccessPath path, int
 }
 
 /** Gets a JavaScript-specific interpretation of the `(package, type)` tuple. */
-API::Node getExtraNodeFromType(string package, string type) {
-  type = "" and
-  result = API::moduleImport(package)
-  or
-  // Access instance of a type based on type annotations
-  result = API::Internal::getANodeOfTypeRaw(getAPackageAlias(package), type)
+API::Node getExtraNodeFromType(string type) {
+  exists(string package, string qualifiedName |
+    parseRelevantTypeString(type, package, qualifiedName)
+  |
+    qualifiedName = "" and
+    result = API::moduleImport(package)
+    or
+    // Access instance of a type based on type annotations
+    result = API::Internal::getANodeOfTypeRaw(package, qualifiedName)
+  )
 }
 
 /**
@@ -157,6 +193,43 @@ API::Node getExtraSuccessorFromInvoke(API::InvokeNode node, AccessPathToken toke
 }
 
 /**
+ * Holds if `name` is the name of a built-in method on Object, Array, or String.
+ */
+private predicate isCommonBuiltinMethodName(string name) {
+  exists(JS::ExternalInstanceMemberDecl member |
+    member.getBaseName() in ["Object", "Array", "String"] and
+    name = member.getName()
+  )
+}
+
+/**
+ * Holds if fuzzy evaluation should not traverse through `call`.
+ */
+private predicate blockFuzzyCall(DataFlow::CallNode call) {
+  isCommonBuiltinMethodName(call.getCalleeName())
+}
+
+pragma[inline]
+API::Node getAFuzzySuccessor(API::Node node) {
+  result = node.getAMember() and
+  // Block traversal into calls to built-ins like .toString() and .substring()
+  // Since there is no API node representing the call itself, block flow into the callee node.
+  not exists(DataFlow::CallNode call |
+    node.asSource() = call.getCalleeNode() and
+    blockFuzzyCall(call)
+  )
+  or
+  result = node.getAParameter()
+  or
+  result = node.getReturn()
+  or
+  result = node.getPromised()
+  or
+  // include 'this' parameters but not 'this' arguments
+  result = node.getReceiver() and result.asSource() instanceof DataFlow::ThisNode
+}
+
+/**
  * Holds if `invoke` matches the JS-specific call site filter in `token`.
  */
 bindingset[token]
@@ -184,9 +257,9 @@ predicate invocationMatchesExtraCallSiteFilter(API::InvokeNode invoke, AccessPat
  */
 pragma[nomagic]
 private predicate relevantInputOutputPath(API::InvokeNode base, AccessPath inputOrOutput) {
-  exists(string package, string type, string input, string output, string path |
-    ModelOutput::relevantSummaryModel(package, type, path, input, output, _) and
-    ModelOutput::resolvedSummaryBase(package, type, path, base) and
+  exists(string type, string input, string output, string path |
+    ModelOutput::relevantSummaryModel(type, path, input, output, _) and
+    ModelOutput::resolvedSummaryBase(type, path, base) and
     inputOrOutput = [input, output]
   )
 }
@@ -216,12 +289,9 @@ private API::Node getNodeFromInputOutputPath(API::InvokeNode baseNode, AccessPat
  * Holds if a CSV summary contributed the step `pred -> succ` of the given `kind`.
  */
 predicate summaryStep(API::Node pred, API::Node succ, string kind) {
-  exists(
-    string package, string type, string path, API::InvokeNode base, AccessPath input,
-    AccessPath output
-  |
-    ModelOutput::relevantSummaryModel(package, type, path, input, output, kind) and
-    ModelOutput::resolvedSummaryBase(package, type, path, base) and
+  exists(string type, string path, API::InvokeNode base, AccessPath input, AccessPath output |
+    ModelOutput::relevantSummaryModel(type, path, input, output, kind) and
+    ModelOutput::resolvedSummaryBase(type, path, base) and
     pred = getNodeFromInputOutputPath(base, input) and
     succ = getNodeFromInputOutputPath(base, output)
   )
@@ -269,4 +339,18 @@ predicate isExtraValidTokenArgumentInIdentifyingAccessPath(string name, string a
   name = "WithStringArgument" and
   exists(argument.indexOf("=")) and
   exists(AccessPath::parseIntWithArity(argument.splitAt("=", 0), 10))
+}
+
+module ModelOutputSpecific {
+  /**
+   * Gets a node that should be seen as an instance of `package,type` due to a type definition
+   * contributed by a CSV model.
+   */
+  cached
+  API::Node getATypeNode(string package, string qualifiedName) {
+    exists(string rawType |
+      result = ModelOutput::getATypeNode(rawType) and
+      parseTypeString(rawType, package, qualifiedName)
+    )
+  }
 }

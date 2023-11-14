@@ -42,7 +42,12 @@ class Expr extends DotNet::Expr, ControlFlowElement, @expr {
   override Location getALocation() { expr_location(this, result) }
 
   /** Gets the type of this expression. */
-  override Type getType() { expressions(this, _, getTypeRef(result)) }
+  override Type getType() {
+    expressions(this, _, result)
+    or
+    not expressions(this, _, any(Type t)) and
+    expressions(this, _, getTypeRef(result))
+  }
 
   /** Gets the annotated type of this expression. */
   final AnnotatedType getAnnotatedType() { result.appliesTo(this) }
@@ -321,6 +326,18 @@ private predicate hasChildPattern(ControlFlowElement pm, Expr child) {
     mid instanceof @tuple_expr and
     child = mid.getAChildExpr()
   )
+  or
+  exists(Expr mid |
+    hasChildPattern(pm, mid) and
+    mid instanceof @list_pattern_expr and
+    child = mid.getAChildExpr()
+  )
+  or
+  exists(Expr mid |
+    hasChildPattern(pm, mid) and
+    mid instanceof @slice_pattern_expr and
+    child = mid.getAChildExpr()
+  )
 }
 
 /**
@@ -504,6 +521,26 @@ class PositionalPatternExpr extends PatternExpr, @positional_pattern_expr {
   PatternExpr getPattern(int n) { result = this.getChild(n) }
 
   override string getAPrimaryQlClass() { result = "PositionalPatternExpr" }
+}
+
+/** A list pattern. For example `[1, 2, int y]` in `x is [1, 2, int y]`. */
+class ListPatternExpr extends PatternExpr, @list_pattern_expr {
+  override string toString() { result = "[ ... ]" }
+
+  /** Gets the `n`th pattern. */
+  PatternExpr getPattern(int n) { result = this.getChild(n) }
+
+  override string getAPrimaryQlClass() { result = "ListPatternExpr" }
+}
+
+/** A slice pattern. For example `..` in `x is [1, .., 2]. */
+class SlicePatternExpr extends PatternExpr, @slice_pattern_expr {
+  override string toString() { result = ".." }
+
+  /** Gets the subpattern, if any. */
+  PatternExpr getPattern() { result = this.getChild(0) }
+
+  override string getAPrimaryQlClass() { result = "SlicePatternExpr" }
 }
 
 /** A unary pattern. For example, `not 1`. */

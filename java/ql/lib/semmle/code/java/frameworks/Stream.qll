@@ -1,9 +1,8 @@
 /** Definitions related to `java.util.stream`. */
 
-private import semmle.code.java.dataflow.ExternalFlow
 private import semmle.code.java.dataflow.FlowSummary
 
-private class CollectCall extends MethodAccess {
+private class CollectCall extends MethodCall {
   CollectCall() {
     this.getMethod()
         .getSourceDeclaration()
@@ -11,7 +10,7 @@ private class CollectCall extends MethodAccess {
   }
 }
 
-private class Collector extends MethodAccess {
+private class Collector extends MethodCall {
   Collector() {
     this.getMethod().getDeclaringType().hasQualifiedName("java.util.stream", "Collectors")
   }

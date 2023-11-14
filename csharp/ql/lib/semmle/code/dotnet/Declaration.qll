@@ -4,14 +4,10 @@
 
 import Element
 import Type
+private import semmle.code.csharp.commons.QualifiedName
 
 /** A declaration. */
 class Declaration extends NamedElement, @dotnet_declaration {
-  override predicate hasQualifiedName(string qualifier, string name) {
-    qualifier = this.getDeclaringType().getQualifiedName() and
-    name = this.getName()
-  }
-
   /** Gets the name of this declaration, without additional decoration such as `<...>`. */
   string getUndecoratedName() { none() }
 
@@ -40,12 +36,12 @@ class Declaration extends NamedElement, @dotnet_declaration {
    *
    * | Declaration             | Unbound declaration |
    * |-------------------------|---------------------|
-   * | `C<int>`                | `C<>`               |
-   * | `C<>.Nested`            | `C<>.Nested`        |
-   * | `C<int>.Nested`         | `C<>.Nested`        |
-   * | `C<>.Method<>`          | `C<>.Method<>`      |
-   * | `C<int>.Method<>`       | `C<>.Method<>`      |
-   * | `C<int>.Method<string>` | `C<>.Method<>`      |
+   * | `C<int>`                | ``C`1``             |
+   * | ``C`1.Nested``          | ``C`1.Nested``      |
+   * | `C<int>.Nested`         | ``C`1.Nested``      |
+   * | ``C`1.Method`1``        | ``C`1.Method`1``    |
+   * | ``C<int>.Method`1``     | ``C`1.Method`1``    |
+   * | `C<int>.Method<string>` | ``C`1.Method`1``    |
    */
   Declaration getUnboundDeclaration() { result = this }
 
@@ -75,6 +71,34 @@ class Member extends Declaration, @dotnet_member {
 
   /** Holds if this member is `static`. */
   predicate isStatic() { none() }
+
+  /** Holds if this member is declared `required`. */
+  predicate isRequired() { none() }
+
+  /** Holds if this member is declared `file` local. */
+  predicate isFile() { none() }
+
+  /**
+   * DEPRECATED: Use `hasFullyQualifiedName` instead.
+   *
+   * Holds if this member has name `name` and is defined in type `type`
+   * with namespace `namespace`.
+   */
+  cached
+  deprecated predicate hasQualifiedName(string namespace, string type, string name) {
+    this.getDeclaringType().hasQualifiedName(namespace, type) and
+    name = this.getName()
+  }
+
+  /**
+   * Holds if this member has name `name` and is defined in type `type`
+   * with namespace `namespace`.
+   */
+  cached
+  predicate hasFullyQualifiedName(string namespace, string type, string name) {
+    this.getDeclaringType().hasFullyQualifiedName(namespace, type) and
+    name = this.getName()
+  }
 }
 
 /** A property. */

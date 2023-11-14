@@ -34,9 +34,7 @@ module CodeInjection {
   abstract class Sanitizer extends DataFlow::Node { }
 
   /** A source of remote user input, considered as a flow source for code injection. */
-  class RemoteFlowSourceAsSource extends Source {
-    RemoteFlowSourceAsSource() { this instanceof RemoteFlowSource }
-  }
+  class RemoteFlowSourceAsSource extends Source instanceof RemoteFlowSource { }
 
   /**
    * An expression which may be interpreted as an AngularJS expression.
@@ -257,9 +255,6 @@ module CodeInjection {
     NoSqlCodeInjectionSink() { any(NoSql::Query q).getACodeOperator() = this }
   }
 
-  /** DEPRECATED: Alias for NoSqlCodeInjectionSink */
-  deprecated class NoSQLCodeInjectionSink = NoSqlCodeInjectionSink;
-
   /**
    * The first argument to `Module.prototype._compile`, considered as a code-injection sink.
    */
@@ -294,6 +289,34 @@ module CodeInjection {
         )
       )
     }
+  }
+
+  /**
+   * An execution of a terminal command via the `node-pty` library, seen as a code injection sink.
+   * Example:
+   * ```JS
+   * var pty = require('node-pty');
+   * var ptyProcess = pty.spawn("bash", [], {...});
+   * ptyProcess.write('ls\r');
+   * ```
+   */
+  class NodePty extends Sink {
+    NodePty() {
+      this =
+        API::moduleImport("node-pty")
+            .getMember("spawn")
+            .getReturn()
+            .getMember("write")
+            .getACall()
+            .getArgument(0)
+    }
+  }
+
+  /**
+   * A value interpreted as code by the `webix` library.
+   */
+  class WebixExec extends Sink {
+    WebixExec() { this = Webix::webix().getMember("exec").getParameter(0).asSink() }
   }
 
   /** A sink for code injection via template injection. */
@@ -404,10 +427,23 @@ module CodeInjection {
   }
 
   /**
+   * A value interpreted as a template by the `webix` library.
+   */
+  class WebixTemplateSink extends TemplateSink {
+    WebixTemplateSink() {
+      this = Webix::webix().getMember("ui").getParameter(0).getMember("template").asSink()
+      or
+      this =
+        Webix::webix().getMember("ui").getParameter(0).getMember("template").getReturn().asSink()
+    }
+  }
+
+  /**
    * A call to JSON.stringify() seen as a sanitizer.
    */
   class JsonStringifySanitizer extends Sanitizer, JsonStringifyCall { }
 
-  /** DEPRECATED: Alias for JsonStringifySanitizer */
-  deprecated class JSONStringifySanitizer = JsonStringifySanitizer;
+  private class SinkFromModel extends Sink {
+    SinkFromModel() { this = ModelOutput::getASinkNode("code-injection").asSink() }
+  }
 }

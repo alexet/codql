@@ -1,7 +1,7 @@
+using System.IO;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Semmle.Extraction.Kinds;
-using System.IO;
 
 namespace Semmle.Extraction.CSharp.Entities.Expressions
 {
@@ -50,6 +50,7 @@ namespace Semmle.Extraction.CSharp.Entities.Expressions
                 case SyntaxKind.BarBarToken: return ExprKind.LOG_OR;
                 case SyntaxKind.GreaterThanEqualsToken: return ExprKind.GE;
                 case SyntaxKind.GreaterThanGreaterThanToken: return ExprKind.RSHIFT;
+                case SyntaxKind.GreaterThanGreaterThanGreaterThanToken: return ExprKind.URSHIFT;
                 case SyntaxKind.LessThanLessThanToken: return ExprKind.LSHIFT;
                 case SyntaxKind.CaretToken: return ExprKind.BIT_XOR;
                 case SyntaxKind.QuestionQuestionToken: return ExprKind.NULL_COALESCING;

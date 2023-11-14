@@ -71,7 +71,7 @@ module ExposedForTestingOnly {
  * Holds if the `i`th node of basic block `bb` reads source variable `v`.
  */
 private predicate variableReadActual(ControlFlow::BasicBlock bb, int i, Ssa::SourceVariable v) {
-  v.getAnAccess().(AssignableRead) = bb.getNode(i).getElement()
+  v.getAnAccess().(AssignableRead) = bb.getNode(i).getAstNode()
 }
 
 private module SourceVariableImpl {
@@ -776,11 +776,11 @@ private module CapturedVariableImpl {
     Callable c, CapturedWrittenLocalScopeVariable v,
     CapturedWrittenLocalScopeVariableDefinition vdef
   ) {
-    exists(ControlFlow::BasicBlock bb, int i, CapturedWrittenLocalScopeSourceVariable sv |
+    exists(ControlFlow::BasicBlock bb, CapturedWrittenLocalScopeSourceVariable sv |
       vdef.getTarget() = v and
       vdef.getEnclosingCallable() = c and
       sv.getAssignable() = v and
-      bb.getNode(i) = vdef.getAControlFlowNode() and
+      bb.getNode(_) = vdef.getAControlFlowNode() and
       c != v.getCallable()
     )
   }
@@ -939,7 +939,7 @@ private module CapturedVariableLivenessImpl {
     CapturedReadLocalScopeVariable captured, Callable c, boolean libraryDelegateCall
   ) {
     implicitReadCandidate(v, call) and
-    c = getARuntimeTarget(call.getElement(), libraryDelegateCall) and
+    c = getARuntimeTarget(call.getAstNode(), libraryDelegateCall) and
     captured = v.getAssignable() and
     capturerReads(_, captured)
   }
@@ -1159,6 +1159,7 @@ private predicate adjacentDefReachesUncertainRead(
   )
 }
 
+pragma[nomagic]
 private predicate adjacentDefReachesUncertainReadExt(
   DefinitionExt def, SsaInput::BasicBlock bb1, int i1, SsaInput::BasicBlock bb2, int i2
 ) {
@@ -1307,9 +1308,9 @@ private module Cached {
   predicate isCapturedVariableDefinitionFlowOut(
     Ssa::ExplicitDefinition def, Ssa::ImplicitCallDefinition cdef, boolean additionalCalls
   ) {
-    exists(Ssa::Definition def0, ControlFlow::BasicBlock bb, int i |
+    exists(Ssa::Definition def0 |
       def = def0.getAnUltimateDefinition() and
-      capturedReadOut(bb, i, def0.getSourceVariable(), cdef.getSourceVariable(), cdef.getCall(),
+      capturedReadOut(_, _, def0.getSourceVariable(), cdef.getSourceVariable(), cdef.getCall(),
         additionalCalls)
     )
   }

@@ -45,6 +45,8 @@ private PropAccess namedPropAccess(AccessPath base, PropertyName name, BasicBloc
 
 private SsaVariable getRefinedVariable(SsaVariable variable) {
   result = variable.getDefinition().(SsaRefinementNode).getAnInput()
+  or
+  result = variable.getDefinition().(SsaPhiNode).getRephinedVariable()
 }
 
 private SsaVariable getARefinementOf(SsaVariable variable) { variable = getRefinedVariable(result) }
@@ -118,7 +120,7 @@ class AccessPath extends TAccessPath {
   /**
    * Gets an expression represented by this access path.
    */
-  Expr getAnInstance() { result = getAnInstanceIn(_) }
+  Expr getAnInstance() { result = this.getAnInstanceIn(_) }
 
   /**
    * Gets a textual representation of this access path.

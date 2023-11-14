@@ -80,7 +80,7 @@ delegates.cs:
 #   29|         0: [Parameter] g
 #   29|           -1: [TypeMention] int
 #   29|       4: [BlockStmt] {...}
-#   33|   5: [DelegateType] Predicate<>
+#   33|   5: [DelegateType] Predicate`1
 #-----|     1: (Type parameters)
 #   33|       0: [TypeParameter] T
 #-----|     2: (Parameters)
@@ -245,7 +245,7 @@ delegates.cs:
 #   79|                 0: [IntLiteral] 3
 #   79|               1: [DelegateCall] delegate call
 #   79|                 -1: [LocalVariableAccess] access to local variable ps
-#   79|                 0: [StringLiteral] ""
+#   79|                 0: [StringLiteralUtf16] ""
 #   81|         16: [LocalVariableDeclStmt] ... ...;
 #   81|           0: [LocalVariableDeclExpr] ContextCallback d
 #   81|             0: [TypeMention] ContextCallback

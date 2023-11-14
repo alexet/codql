@@ -14,6 +14,8 @@ private import experimental.adaptivethreatmodeling.NosqlInjectionATM as NosqlInj
 private import experimental.adaptivethreatmodeling.SqlInjectionATM as SqlInjectionAtm
 private import experimental.adaptivethreatmodeling.TaintedPathATM as TaintedPathAtm
 private import experimental.adaptivethreatmodeling.XssATM as XssAtm
+private import experimental.adaptivethreatmodeling.XssThroughDomATM as XssThroughDomAtm
+private import experimental.adaptivethreatmodeling.ShellCommandInjectionFromEnvironmentATM as ShellCommandInjectionFromEnvironmentAtm
 
 /**
  * Gets the set of featureName-featureValue pairs for each endpoint in the training set.
@@ -29,7 +31,7 @@ predicate tokenFeatures(DataFlow::Node endpoint, string featureName, string feat
     or
     // Performance note: this creates a Cartesian product between `endpoint` and `featureName`.
     featureName = EndpointFeatures::getASupportedFeatureName() and
-    not exists(string value | EndpointFeatures::tokenFeatures(endpoint, featureName, value)) and
+    not EndpointFeatures::tokenFeatures(endpoint, featureName, _) and
     featureValue = ""
   )
 }
@@ -214,6 +216,12 @@ DataFlow::Configuration getDataFlowCfg(Query query) {
   query instanceof TaintedPathQuery and result instanceof TaintedPathAtm::TaintedPathAtmConfig
   or
   query instanceof XssQuery and result instanceof XssAtm::DomBasedXssAtmConfig
+  or
+  query instanceof XssThroughDomQuery and result instanceof XssThroughDomAtm::XssThroughDomAtmConfig
+  or
+  query instanceof ShellCommandInjectionFromEnvironmentQuery and
+  result instanceof
+    ShellCommandInjectionFromEnvironmentAtm::ShellCommandInjectionFromEnvironmentAtmConfig
 }
 
 // TODO: Delete this once we are no longer surfacing `hasFlowFromSource`.

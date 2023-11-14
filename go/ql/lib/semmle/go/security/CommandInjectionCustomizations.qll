@@ -29,17 +29,8 @@ module CommandInjection {
    */
   abstract class Sanitizer extends DataFlow::Node { }
 
-  /**
-   * DEPRECATED: Use `Sanitizer` instead.
-   *
-   * A sanitizer guard for command-injection vulnerabilities.
-   */
-  abstract deprecated class SanitizerGuard extends DataFlow::BarrierGuard { }
-
   /** A source of untrusted data, considered as a taint source for command injection. */
-  class UntrustedFlowAsSource extends Source {
-    UntrustedFlowAsSource() { this instanceof UntrustedFlowSource }
-  }
+  class UntrustedFlowAsSource extends Source instanceof UntrustedFlowSource { }
 
   /** A command name, considered as a taint sink for command injection. */
   class CommandNameAsSink extends Sink {

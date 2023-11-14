@@ -19,9 +19,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import com.github.codeql.Logger;
-import static com.github.codeql.ClassNamesKt.getIrDeclBinaryName;
+import static com.github.codeql.ClassNamesKt.getIrElementBinaryName;
 import static com.github.codeql.ClassNamesKt.getIrClassVirtualFile;
 
+import org.jetbrains.kotlin.ir.IrElement;
 import org.jetbrains.kotlin.ir.declarations.IrClass;
 
 import com.intellij.openapi.vfs.VirtualFile;
@@ -48,17 +49,11 @@ import com.semmle.util.trap.dependencies.TrapDependencies;
 import com.semmle.util.trap.dependencies.TrapSet;
 import com.semmle.util.trap.pathtransformers.PathTransformer;
 
-public class OdasaOutput {
-	// By default we use lockless TRAP writing, but this can be set
-	// if we want to use the old TRAP locking for any reason.
-	private final boolean use_trap_locking = Env.systemEnv().getBoolean("CODEQL_EXTRACTOR_JAVA_TRAP_LOCKING", false);
+import com.github.codeql.Compression;
 
-	// either these are set ...
+public class OdasaOutput {
 	private final File trapFolder;
 	private final File sourceArchiveFolder;
-
-	// ... or this one is set
-	private final PopulationSpecFile specFile;
 
 	private File currentSourceFile;
 	private TrapSet trapsCreated;
@@ -70,36 +65,31 @@ public class OdasaOutput {
 	private final boolean trackClassOrigins;
 
 	private final Logger log;
+	private final Compression compression;
 
 	/** DEBUG only: just use the given file as the root for TRAP, source archive etc */
-	OdasaOutput(File outputRoot, Logger log) {
+	OdasaOutput(File outputRoot, Compression compression, Logger log) {
 		this.trapFolder = new File(outputRoot, "trap");
 		this.sourceArchiveFolder = new File(outputRoot, "src_archive");
-		this.specFile = null;
 		this.trackClassOrigins = false;
 		this.log = log;
+		this.compression = compression;
 	}
 
-	public OdasaOutput(boolean trackClassOrigins, Logger log) {
+	public OdasaOutput(boolean trackClassOrigins, Compression compression, Logger log) {
 		String trapFolderVar = Env.systemEnv().getFirstNonEmpty("CODEQL_EXTRACTOR_JAVA_TRAP_DIR", Var.TRAP_FOLDER.name());
-		if (trapFolderVar != null) {
-			String sourceArchiveVar = Env.systemEnv().getFirstNonEmpty("CODEQL_EXTRACTOR_JAVA_SOURCE_ARCHIVE_DIR", Var.SOURCE_ARCHIVE.name());
-			if (sourceArchiveVar == null)
-				throw new ResourceError(Var.TRAP_FOLDER + " was set to '" + trapFolderVar + "', but "
-						+ Var.SOURCE_ARCHIVE + " was not set");
-			this.trapFolder = new File(trapFolderVar);
-			this.sourceArchiveFolder = new File(sourceArchiveVar);
-			this.specFile = null;
-		} else {
-			this.trapFolder = null;
-			this.sourceArchiveFolder = null;
-			String specFileVar = Env.systemEnv().get(Var.ODASA_JAVA_LAYOUT);
-			if (specFileVar == null)
-				throw new ResourceError("Neither " + Var.TRAP_FOLDER + " nor " + Var.ODASA_JAVA_LAYOUT + " was set");
-			this.specFile = new PopulationSpecFile(new File(specFileVar));
+		if (trapFolderVar == null) {
+			throw new ResourceError("CODEQL_EXTRACTOR_JAVA_TRAP_DIR was not set");
 		}
+		String sourceArchiveVar = Env.systemEnv().getFirstNonEmpty("CODEQL_EXTRACTOR_JAVA_SOURCE_ARCHIVE_DIR", Var.SOURCE_ARCHIVE.name());
+		if (sourceArchiveVar == null) {
+			throw new ResourceError("CODEQL_EXTRACTOR_JAVA_SOURCE_ARCHIVE_DIR was not set");
+    }
+		this.trapFolder = new File(trapFolderVar);
+		this.sourceArchiveFolder = new File(sourceArchiveVar);
 		this.trackClassOrigins = trackClassOrigins;
 		this.log = log;
+		this.compression = compression;
 	}
 
 	public File getTrapFolder() {
@@ -126,11 +116,8 @@ public class OdasaOutput {
 
 	/** The output paths for that file, or null if it shouldn't be included */
 	private SpecFileEntry entryFor() {
-		if (specFile != null)
-			return specFile.getEntryFor(currentSourceFile);
-		else
-			return new SpecFileEntry(trapFolder, sourceArchiveFolder,
-					Arrays.asList(PathTransformer.std().fileAsDatabaseString(currentSourceFile)));
+		return new SpecFileEntry(trapFolder, sourceArchiveFolder,
+				Arrays.asList(PathTransformer.std().fileAsDatabaseString(currentSourceFile)));
 	}
 
 	/*
@@ -198,34 +185,33 @@ public class OdasaOutput {
 			return null;
 		return FileUtil.appendAbsolutePath(
 				currentSpecFileEntry.getTrapFolder(),
-				JARS_DIR + "/" + PathTransformer.std().fileAsDatabaseString(jarFile) + ".trap.gz");
+				JARS_DIR + "/" + PathTransformer.std().fileAsDatabaseString(jarFile) + ".trap" + compression.getExtension());
 	}
 
 	private File getTrapFileForModule(String moduleName) {
 		return FileUtil.appendAbsolutePath(
 				currentSpecFileEntry.getTrapFolder(),
-				MODULES_DIR + "/" + moduleName + ".trap.gz");
+				MODULES_DIR + "/" + moduleName + ".trap" + compression.getExtension());
 	}
 
 	private File trapFileFor(File file) {
 		return FileUtil.appendAbsolutePath(currentSpecFileEntry.getTrapFolder(),
-				PathTransformer.std().fileAsDatabaseString(file) + ".trap.gz");
+				PathTransformer.std().fileAsDatabaseString(file) + ".trap" + compression.getExtension());
 	}
 
-	private File getTrapFileForDecl(IrDeclaration sym, String signature) {
+	private File getTrapFileForDecl(IrElement sym, String signature) {
 		if (currentSpecFileEntry == null)
 			return null;
 		return trapFileForDecl(sym, signature);
 	}
 
-	private File trapFileForDecl(IrDeclaration sym, String signature) {
+	private File trapFileForDecl(IrElement sym, String signature) {
 		return FileUtil.fileRelativeTo(currentSpecFileEntry.getTrapFolder(),
 				trapFilePathForDecl(sym, signature));
 	}
 
-	private String trapFilePathForDecl(IrDeclaration sym, String signature) {
-		String binaryName = getIrDeclBinaryName(sym);
-		String binaryNameWithSignature = binaryName + signature;
+	private String trapFilePathForDecl(IrElement sym, String signature) {
+		String binaryName = getIrElementBinaryName(sym);
 		// TODO: Reinstate this?
 		//if (getTrackClassOrigins())
 		//  classId += "-" + StringDigestor.digest(sym.getSourceFileId());
@@ -233,25 +219,8 @@ public class OdasaOutput {
 					binaryName.replace('.', '/') +
 					signature +
 					".members" +
-					".trap.gz";
+					".trap" + compression.getExtension();
 		return result;
-	}
-
-	/*
-	 * Deletion of existing trap files.
-	 */
-
-	private void deleteTrapFileAndDependencies(IrDeclaration sym, String signature) {
-		File trap = trapFileForDecl(sym, signature);
-		if (trap.exists()) {
-			trap.delete();
-			File depFile = new File(trap.getParentFile(), trap.getName().replace(".trap.gz", ".dep"));
-			if (depFile.exists())
-				depFile.delete();
-			File metadataFile = new File(trap.getParentFile(), trap.getName().replace(".trap.gz", ".metadata"));
-			if (metadataFile.exists())
-				metadataFile.delete();
-		}
 	}
 
 	/*
@@ -269,56 +238,37 @@ public class OdasaOutput {
 	 * 		Any unique suffix needed to distinguish `sym` from other declarations with the same name.
 	 * 		For functions for example, this means its parameter signature.
 	 */
-	private TrapFileManager getMembersWriterForDecl(File trap, File trapFileBase, TrapClassVersion trapFileVersion, IrDeclaration sym, String signature) {
-		if (use_trap_locking) {
-			TrapClassVersion currVersion = TrapClassVersion.fromSymbol(sym, log);
-			String shortName = sym instanceof IrDeclarationWithName ? ((IrDeclarationWithName)sym).getName().asString() : "(name unknown)";
-			if (trap.exists()) {
-				// Only re-write an existing trap file if we encountered a newer version of the same class.
-				TrapClassVersion trapVersion = readVersionInfo(trap);
-				if (!currVersion.isValid()) {
-					log.trace("Not rewriting trap file for: " + shortName + " " + trapVersion + " " + currVersion + " " + trap);
-				} else if (currVersion.newerThan(trapVersion)) {
-					log.trace("Rewriting trap file for: " + shortName + " " + trapVersion + " " + currVersion + " " + trap);
-					deleteTrapFileAndDependencies(sym, signature);
-				} else {
-					return null;
-				}
-			} else {
-				log.trace("Writing trap file for: " + shortName + " " + currVersion + " " + trap);
-			}
-		} else {
-			// If the TRAP file already exists then we
-			// don't need to write it.
-			if (trap.exists()) {
-				log.trace("Not rewriting trap file for " + trap.toString() + " as it exists");
-				return null;
-			}
-			// If the TRAP file was written in the past, and
-			// then renamed to its trap-old name, then we
-			// don't need to rewrite it only to rename it
-			// again.
-			File trapFileDir = trap.getParentFile();
-			File trapOld = new File(trapFileDir, trap.getName().replace(".trap.gz", ".trap-old.gz"));
-			if (trapOld.exists()) {
-				log.trace("Not rewriting trap file for " + trap.toString() + " as the trap-old exists");
-				return null;
-			}
-			// Otherwise, if any newer TRAP file has already
-			// been written then we don't need to write
-			// anything.
-			if (trapFileBase != null && trapFileVersion != null && trapFileDir.exists()) {
-				String trapFileBaseName = trapFileBase.getName();
+	private TrapFileManager getMembersWriterForDecl(File trap, File trapFileBase, TrapClassVersion trapFileVersion, IrElement sym, String signature) {
+		// If the TRAP file already exists then we
+		// don't need to write it.
+		if (trap.exists()) {
+			log.trace("Not rewriting trap file for " + trap.toString() + " as it exists");
+			return null;
+		}
+		// If the TRAP file was written in the past, and
+		// then renamed to its trap-old name, then we
+		// don't need to rewrite it only to rename it
+		// again.
+		File trapFileDir = trap.getParentFile();
+		File trapOld = new File(trapFileDir, trap.getName().replace(".trap" + compression.getExtension(), ".trap-old" + compression.getExtension()));
+		if (trapOld.exists()) {
+			log.trace("Not rewriting trap file for " + trap.toString() + " as the trap-old exists");
+			return null;
+		}
+		// Otherwise, if any newer TRAP file has already
+		// been written then we don't need to write
+		// anything.
+		if (trapFileBase != null && trapFileVersion != null && trapFileDir.exists()) {
+			String trapFileBaseName = trapFileBase.getName();
 
-				for (File f: FileUtil.list(trapFileDir)) {
-					String name = f.getName();
-					Matcher m = selectClassVersionComponents.matcher(name);
-					if (m.matches() && m.group(1).equals(trapFileBaseName)) {
-						TrapClassVersion v = new TrapClassVersion(Integer.valueOf(m.group(2)), Integer.valueOf(m.group(3)), Long.valueOf(m.group(4)), m.group(5));
-						if (v.newerThan(trapFileVersion)) {
-							log.trace("Not rewriting trap file for " + trap.toString() + " as " + f.toString() + " exists");
-							return null;
-						}
+			for (File f: FileUtil.list(trapFileDir)) {
+				String name = f.getName();
+				Matcher m = selectClassVersionComponents.matcher(name);
+				if (m.matches() && m.group(1).equals(trapFileBaseName)) {
+					TrapClassVersion v = new TrapClassVersion(Integer.valueOf(m.group(2)), Integer.valueOf(m.group(3)), Long.valueOf(m.group(4)), m.group(5));
+					if (v.newerThan(trapFileVersion)) {
+						log.trace("Not rewriting trap file for " + trap.toString() + " as " + f.toString() + " exists");
+						return null;
 					}
 				}
 			}
@@ -326,8 +276,8 @@ public class OdasaOutput {
 		return trapWriter(trap, sym, signature);
 	}
 
-	private TrapFileManager trapWriter(File trapFile, IrDeclaration sym, String signature) {
-		if (!trapFile.getName().endsWith(".trap.gz"))
+	private TrapFileManager trapWriter(File trapFile, IrElement sym, String signature) {
+		if (!trapFile.getName().endsWith(".trap" + compression.getExtension()))
 			throw new CatastrophicError("OdasaOutput only supports writing to compressed trap files");
 		String relative = FileUtil.relativePath(trapFile, currentSpecFileEntry.getTrapFolder());
 		trapFile.getParentFile().mkdirs();
@@ -335,7 +285,7 @@ public class OdasaOutput {
 		return concurrentWriter(trapFile, relative, log, sym, signature);
 	}
 
-	private TrapFileManager concurrentWriter(File trapFile, String relative, Logger log, IrDeclaration sym, String signature) {
+	private TrapFileManager concurrentWriter(File trapFile, String relative, Logger log, IrElement sym, String signature) {
 		if (trapFile.exists())
 			return null;
 		return new TrapFileManager(trapFile, relative, true, log, sym, signature);
@@ -345,11 +295,11 @@ public class OdasaOutput {
 
 		private TrapDependencies trapDependenciesForClass;
 		private File trapFile;
-		private IrDeclaration sym;
+		private IrElement sym;
 		private String signature;
 		private boolean hasError = false;
 
-		private TrapFileManager(File trapFile, String relative, boolean concurrentCreation, Logger log, IrDeclaration sym, String signature) {
+		private TrapFileManager(File trapFile, String relative, boolean concurrentCreation, Logger log, IrElement sym, String signature) {
 			trapDependenciesForClass = new TrapDependencies(relative);
 			this.trapFile = trapFile;
 			this.sym = sym;
@@ -360,7 +310,7 @@ public class OdasaOutput {
 			return trapFile;
 		}
 
-		public void addDependency(IrDeclaration dep, String signature) {
+		public void addDependency(IrElement dep, String signature) {
 			trapDependenciesForClass.addDependency(trapFilePathForDecl(dep, signature));
 		}
 
@@ -374,28 +324,9 @@ public class OdasaOutput {
 			}
 
 			writeTrapDependencies(trapDependenciesForClass);
-
-			// If we are using TRAP locking then we
-			// need to write a metadata file.
-			if (use_trap_locking) {
-				// Record major/minor version information for extracted class files.
-				// This is subsequently used to determine whether to re-extract (a newer version of) the same class.
-				File metadataFile = new File(trapFile.getAbsolutePath().replace(".trap.gz", ".metadata"));
-				try {
-					Map<String, String> versionMap = new LinkedHashMap<>();
-					TrapClassVersion tcv = TrapClassVersion.fromSymbol(sym, log);
-					versionMap.put(MAJOR_VERSION, String.valueOf(tcv.getMajorVersion()));
-					versionMap.put(MINOR_VERSION, String.valueOf(tcv.getMinorVersion()));
-					versionMap.put(LAST_MODIFIED, String.valueOf(tcv.getLastModified()));
-					versionMap.put(EXTRACTOR_NAME, tcv.getExtractorName());
-					FileUtil.writePropertiesCSV(metadataFile, versionMap);
-				} catch (IOException e) {
-					log.warn("Could not save trap metadata file: " + metadataFile.getAbsolutePath(), e);
-				}
-			}
 		}
 		private void writeTrapDependencies(TrapDependencies trapDependencies) {
-			String dep = trapDependencies.trapFile().replace(".trap.gz", ".dep");
+			String dep = trapDependencies.trapFile().replace(".trap" + compression.getExtension(), ".dep");
 			trapDependencies.save(
 					currentSpecFileEntry.getTrapFolder().toPath().resolve(dep));
 		}
@@ -409,7 +340,7 @@ public class OdasaOutput {
 	 * Trap file locking.
 	 */
 
-	private final Pattern selectClassVersionComponents = Pattern.compile("(.*)#(-?[0-9]+)\\.(-?[0-9]+)-(-?[0-9]+)-(.*)\\.trap\\.gz");
+	private final Pattern selectClassVersionComponents = Pattern.compile("(.*)#(-?[0-9]+)\\.(-?[0-9]+)-(-?[0-9]+)-(.*)\\.trap.*");
 
 	/**
 	 * <b>CAUTION</b>: to avoid the potential for deadlock between multiple concurrent extractor processes,
@@ -422,7 +353,7 @@ public class OdasaOutput {
 	 * previously set by a call to {@link OdasaOutput#setCurrentSourceFile(File)}.
 	 */
 	public TrapLocker getTrapLockerForCurrentSourceFile() {
-		return new TrapLocker((IrClass)null, null);
+		return new TrapLocker((IrClass)null, null, true);
 	}
 
 	/**
@@ -460,19 +391,19 @@ public class OdasaOutput {
 	 *
 	 * @return  a {@link TrapLocker} for the trap file corresponding to the given class symbol.
 	 */
-	public TrapLocker getTrapLockerForDecl(IrDeclaration sym, String signature) {
-		return new TrapLocker(sym, signature);
+	public TrapLocker getTrapLockerForDecl(IrElement sym, String signature, boolean fromSource) {
+		return new TrapLocker(sym, signature, fromSource);
 	}
 
 	public class TrapLocker implements AutoCloseable {
-		private final IrDeclaration sym;
+		private final IrElement sym;
 		private final File trapFile;
 		// trapFileBase is used when doing lockless TRAP file writing.
 		// It is trapFile without the #metadata.trap.gz suffix.
 		private File trapFileBase = null;
 		private TrapClassVersion trapFileVersion = null;
 		private final String signature;
-		private TrapLocker(IrDeclaration decl, String signature) {
+		private TrapLocker(IrElement decl, String signature, boolean fromSource) {
 			this.sym = decl;
 			this.signature = signature;
 			if (sym==null) {
@@ -480,19 +411,18 @@ public class OdasaOutput {
 				trapFile = null;
 			} else {
 				File normalTrapFile = getTrapFileForDecl(sym, signature);
-				if (use_trap_locking) {
-					trapFile = normalTrapFile;
-				} else {
-					// We encode the metadata into the filename, so that the
-					// TRAP filenames for different metadatas don't overlap.
+				// We encode the metadata into the filename, so that the
+				// TRAP filenames for different metadatas don't overlap.
+				if (fromSource)
+					trapFileVersion = new TrapClassVersion(0, 0, 0, "kotlin");
+				else
 					trapFileVersion = TrapClassVersion.fromSymbol(sym, log);
-					String baseName = normalTrapFile.getName().replace(".trap.gz", "");
-					// If a class has lots of inner classes, then we get lots of files
-					// in a single directory. This makes our directory listings later slow.
-					// To avoid this, rather than using files named .../Foo*, we use .../Foo/Foo*.
-					trapFileBase = new File(new File(normalTrapFile.getParentFile(), baseName), baseName);
-					trapFile = new File(trapFileBase.getPath() + '#' + trapFileVersion.toString() + ".trap.gz");
-				}
+				String baseName = normalTrapFile.getName().replace(".trap" + compression.getExtension(), "");
+				// If a class has lots of inner classes, then we get lots of files
+				// in a single directory. This makes our directory listings later slow.
+				// To avoid this, rather than using files named .../Foo*, we use .../Foo/Foo*.
+				trapFileBase = new File(new File(normalTrapFile.getParentFile(), baseName), baseName);
+				trapFile = new File(trapFileBase.getPath() + '#' + trapFileVersion.toString() + ".trap" + compression.getExtension());
 			}
 		}
 		private TrapLocker(File jarFile) {
@@ -507,9 +437,6 @@ public class OdasaOutput {
 		}
 		public TrapFileManager getTrapFileManager() {
 			if (trapFile!=null) {
-				if (use_trap_locking) {
-					lockTrapFile(trapFile);
-				}
 				return getMembersWriterForDecl(trapFile, trapFileBase, trapFileVersion, sym, signature);
 			} else {
 				return null;
@@ -519,23 +446,14 @@ public class OdasaOutput {
 		@Override
 		public void close() {
 			if (trapFile!=null) {
-				try {
-					if (use_trap_locking) {
-						unlockTrapFile(trapFile);
-					}
-				} catch (NestedError e) {
-					log.warn("Error unlocking trap file " + trapFile.getAbsolutePath(), e);
-				}
-
-				// If we are writing TRAP file locklessly, then now that we
-				// have finished writing our TRAP file, we want to rename
-				// and TRAP file that matches our trapFileBase but doesn't
-				// have the latest metadata.
+				// Now that we have finished writing our TRAP file, we want
+				// to rename and TRAP file that matches our trapFileBase
+				// but doesn't have the latest metadata.
 				// Renaming it to trap-old means that it won't be imported,
 				// but we can still use its presence to avoid future
 				// invocations rewriting it, and it means that the information
 				// is in the TRAP directory if we need it for debugging.
-				if (!use_trap_locking && sym != null) {
+				if (sym != null) {
 					File trapFileDir = trapFileBase.getParentFile();
 					String trapFileBaseName = trapFileBase.getName();
 
@@ -575,7 +493,7 @@ public class OdasaOutput {
 						for (Pair<File, TrapClassVersion> p: pairs) {
 							if (!latestVersion.equals(p.snd())) {
 								File f = p.fst();
-								File fOld = new File(f.getParentFile(), f.getName().replace(".trap.gz", ".trap-old.gz"));
+								File fOld = new File(f.getParentFile(), f.getName().replace(".trap" + compression.getExtension(), ".trap-old" + compression.getExtension()));
 								// We aren't interested in whether or not this succeeds;
 								// it may fail because a concurrent extractor has already
 								// renamed it.
@@ -586,31 +504,11 @@ public class OdasaOutput {
 				}
 			}
 		}
-
-		private LockDirectory getExtractorLockDir() {
-			return LockDirectory.instance(currentSpecFileEntry.getTrapFolder(), log);
-		}
-
-		private void lockTrapFile(File trapFile) {
-			getExtractorLockDir().blockingLock(LockingMode.Exclusive, trapFile, "Java extractor lock");
-		}
-
-		private void unlockTrapFile(File trapFile) {
-			boolean success = getExtractorLockDir().maybeUnlock(LockingMode.Exclusive, trapFile);
-			if (!success) {
-				log.warn("Trap file was not locked: " + trapFile);
-			}
-		}
 	}
 
 	/*
 	 * Class version tracking.
 	 */
-
-	private static final String MAJOR_VERSION = "majorVersion";
-	private static final String MINOR_VERSION = "minorVersion";
-	private static final String LAST_MODIFIED = "lastModified";
-	private static final String EXTRACTOR_NAME = "extractorName";
 
 	private static class TrapClassVersion {
 		private int majorVersion;
@@ -717,11 +615,18 @@ public class OdasaOutput {
             return vf.getTimeStamp();
         }
 
-		private static TrapClassVersion fromSymbol(IrDeclaration sym, Logger log) {
-			VirtualFile vf = sym instanceof IrClass ? getIrClassVirtualFile((IrClass)sym) :
-					sym.getParent() instanceof IrClass ? getIrClassVirtualFile((IrClass)sym.getParent()) :
-					null;
-			if(vf == null)
+		private static VirtualFile getVirtualFileIfClass(IrElement e) {
+			if (e instanceof IrClass)
+				return getIrClassVirtualFile((IrClass)e);
+			else
+				return null;
+		}
+
+		private static TrapClassVersion fromSymbol(IrElement sym, Logger log) {
+			VirtualFile vf = getVirtualFileIfClass(sym);
+			if (vf == null && sym instanceof IrDeclaration)
+				vf = getVirtualFileIfClass(((IrDeclaration)sym).getParent());
+			if (vf == null)
 				return new TrapClassVersion(-1, 0, 0, null);
 
 			final int[] versionStore = new int[1];
@@ -772,27 +677,4 @@ public class OdasaOutput {
 			return majorVersion + "." + minorVersion + "-" + lastModified + "-" + extractorName;
 		}
 	}
-
-	private TrapClassVersion readVersionInfo(File trap) {
-		int majorVersion = 0;
-		int minorVersion = 0;
-		long lastModified = 0;
-		String extractorName = null;
-		File metadataFile = new File(trap.getAbsolutePath().replace(".trap.gz", ".metadata"));
-		if (metadataFile.exists()) {
-			Map<String,String> metadataMap = FileUtil.readPropertiesCSV(metadataFile);
-			try {
-				majorVersion = Integer.parseInt(metadataMap.get(MAJOR_VERSION));
-				minorVersion = Integer.parseInt(metadataMap.get(MINOR_VERSION));
-				lastModified = Long.parseLong(metadataMap.get(LAST_MODIFIED));
-				extractorName = metadataMap.get(EXTRACTOR_NAME);
-			} catch (NumberFormatException e) {
-				log.warn("Invalid class file version for " + trap.getAbsolutePath(), e);
-			}
-		} else {
-			log.warn("Trap metadata file does not exist: " + metadataFile.getAbsolutePath());
-		}
-		return new TrapClassVersion(majorVersion, minorVersion, lastModified, extractorName);
-	}
-
 }

@@ -1,5 +1,11 @@
 | ..()(..) | RoutineType |  |  |  |  |
 | ..(*)(..) | FunctionPointerType |  | ..()(..) |  |  |
+| _Complex _Float16 | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
+| _Complex _Float32 | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
+| _Complex _Float32x | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
+| _Complex _Float64 | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
+| _Complex _Float64x | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
+| _Complex _Float128 | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
 | _Complex __float128 | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
 | _Complex double | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
 | _Complex float | BinaryFloatingPointType, ComplexNumberType |  |  |  |  |
@@ -7,16 +13,18 @@
 | _Decimal32 | Decimal32Type |  |  |  |  |
 | _Decimal64 | Decimal64Type |  |  |  |  |
 | _Decimal128 | Decimal128Type |  |  |  |  |
+| _Float16 | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | _Float32 | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | _Float32x | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | _Float64 | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | _Float64x | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | _Float128 | BinaryFloatingPointType, RealNumberType |  |  |  |  |
-| _Float128x | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | _Imaginary double | BinaryFloatingPointType, ImaginaryNumberType |  |  |  |  |
 | _Imaginary float | BinaryFloatingPointType, ImaginaryNumberType |  |  |  |  |
 | _Imaginary long double | BinaryFloatingPointType, ImaginaryNumberType |  |  |  |  |
+| __bf16 | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | __float128 | Float128Type |  |  |  |  |
+| __fp16 | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | __int128 | Int128Type |  |  |  |  |
 | __va_list_tag | DirectAccessHolder, MetricClass, Struct, StructLikeClass |  |  |  |  |
 | __va_list_tag & | LValueReferenceType |  | __va_list_tag |  |  |
@@ -82,6 +90,7 @@
 | signed long | LongType |  |  |  |  |
 | signed long long | LongLongType |  |  |  |  |
 | signed short | ShortType |  |  |  |  |
+| std::float16_t | BinaryFloatingPointType, RealNumberType |  |  |  |  |
 | unknown | UnknownType |  |  |  |  |
 | unsigned __int128 | Int128Type |  |  |  | unsigned integral |
 | unsigned char | UnsignedCharType |  |  |  | unsigned integral |

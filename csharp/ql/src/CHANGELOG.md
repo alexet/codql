@@ -1,3 +1,120 @@
+## 0.8.2
+
+No user-facing changes.
+
+## 0.8.1
+
+### Minor Analysis Improvements
+
+* The `cs/web/insecure-direct-object-reference` and `cs/web/missing-function-level-access-control` have been improved to better recognize attributes on generic classes.
+
+## 0.8.0
+
+### New Queries
+
+* Added a new query, `cs/web/insecure-direct-object-reference`, to find instances of missing authorization checks for resources selected by an ID parameter.
+
+## 0.7.5
+
+No user-facing changes.
+
+## 0.7.4
+
+No user-facing changes.
+
+## 0.7.3
+
+No user-facing changes.
+
+## 0.7.2
+
+No user-facing changes.
+
+## 0.7.1
+
+No user-facing changes.
+
+## 0.7.0
+
+### New Queries
+
+* Added a new query, `cs/web/missing-function-level-access-control`, to find instances of missing authorization checks.
+
+### Bug Fixes
+
+* The query "Arbitrary file write during zip extraction ("Zip Slip")" (`cs/zipslip`) has been renamed to "Arbitrary file access during archive extraction ("Zip Slip")."
+
+## 0.6.4
+
+No user-facing changes.
+
+## 0.6.3
+
+No user-facing changes.
+
+## 0.6.2
+
+No user-facing changes.
+
+## 0.6.1
+
+### Minor Analysis Improvements
+
+* Additional sinks modelling writes to unencrypted local files have been added to `ExternalLocationSink`, used by the `cs/cleartext-storage` and `cs/exposure-of-sensitive-information` queries.
+
+## 0.6.0
+
+### Minor Analysis Improvements
+
+* The query `cs/web/debug-binary` now disregards the `debug` attribute in case there is a transformation that removes it.
+
+## 0.5.6
+
+No user-facing changes.
+
+## 0.5.5
+
+No user-facing changes.
+
+## 0.5.4
+
+No user-facing changes.
+
+## 0.5.3
+
+No user-facing changes.
+
+## 0.5.2
+
+No user-facing changes.
+
+## 0.5.1
+
+No user-facing changes.
+
+## 0.5.0
+
+### New Queries
+
+* Added a new query, `csharp/telemetry/supported-external-api`, to detect supported 3rd party APIs used in a codebase.
+
+### Minor Analysis Improvements
+
+* The `AlertSuppression.ql` query has been updated to support the new `// codeql[query-id]` supression comments. These comments can be used to suppress an alert and must be placed on a blank line before the alert. In addition the legacy `// lgtm` and `// lgtm[query-id]` comments can now also be placed on the line before an alert.
+* The extensible predicates for Models as Data have been renamed (the `ext` prefix has been removed). As an example, `extSummaryModel` has been renamed to `summaryModel`.
+
+### Bug Fixes
+
+* Fixes a bug where the Owin.qll framework library will look for "URI" instead of "Uri" in the OwinRequest class.
+
+## 0.4.6
+
+No user-facing changes.
+
+## 0.4.5
+
+No user-facing changes.
+
 ## 0.4.4
 
 No user-facing changes.

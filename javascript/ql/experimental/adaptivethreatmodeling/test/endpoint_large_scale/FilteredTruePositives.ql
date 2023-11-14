@@ -16,10 +16,13 @@ import semmle.javascript.security.dataflow.NosqlInjectionCustomizations
 import semmle.javascript.security.dataflow.SqlInjectionCustomizations
 import semmle.javascript.security.dataflow.TaintedPathCustomizations
 import semmle.javascript.security.dataflow.DomBasedXssCustomizations
+import semmle.javascript.security.dataflow.ShellCommandInjectionFromEnvironmentCustomizations
 import experimental.adaptivethreatmodeling.NosqlInjectionATM as NosqlInjectionAtm
 import experimental.adaptivethreatmodeling.SqlInjectionATM as SqlInjectionAtm
 import experimental.adaptivethreatmodeling.TaintedPathATM as TaintedPathAtm
 import experimental.adaptivethreatmodeling.XssATM as XssAtm
+import experimental.adaptivethreatmodeling.XssThroughDomATM as XssThroughDomAtm
+import experimental.adaptivethreatmodeling.ShellCommandInjectionFromEnvironmentATM as ShellCommandInjectionFromEnvironmentAtm
 
 query predicate nosqlFilteredTruePositives(DataFlow::Node endpoint, string reason) {
   endpoint instanceof NosqlInjection::Sink and
@@ -42,5 +45,21 @@ query predicate taintedPathFilteredTruePositives(DataFlow::Node endpoint, string
 query predicate xssFilteredTruePositives(DataFlow::Node endpoint, string reason) {
   endpoint instanceof DomBasedXss::Sink and
   reason = any(XssAtm::DomBasedXssAtmConfig cfg).getAReasonSinkExcluded(endpoint) and
+  reason != "argument to modeled function"
+}
+
+query predicate xssThroughDomFilteredTruePositives(DataFlow::Node endpoint, string reason) {
+  endpoint instanceof DomBasedXss::Sink and
+  reason = any(XssThroughDomAtm::XssThroughDomAtmConfig cfg).getAReasonSinkExcluded(endpoint) and
+  reason != "argument to modeled function"
+}
+
+query predicate shellCommandInjectionFromEnvironmentAtmFilteredTruePositives(
+  DataFlow::Node endpoint, string reason
+) {
+  endpoint instanceof ShellCommandInjectionFromEnvironment::Sink and
+  reason =
+    any(ShellCommandInjectionFromEnvironmentAtm::ShellCommandInjectionFromEnvironmentAtmConfig cfg)
+        .getAReasonSinkExcluded(endpoint) and
   reason != "argument to modeled function"
 }

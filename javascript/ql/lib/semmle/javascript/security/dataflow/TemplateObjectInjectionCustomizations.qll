@@ -30,15 +30,11 @@ module TemplateObjectInjection {
    */
   abstract class Sanitizer extends DataFlow::Node { }
 
-  private class TaintedObjectSourceAsSource extends Source {
-    TaintedObjectSourceAsSource() { this instanceof TaintedObject::Source }
-
+  private class TaintedObjectSourceAsSource extends Source instanceof TaintedObject::Source {
     override DataFlow::FlowLabel getAFlowLabel() { result = TaintedObject::label() }
   }
 
-  private class RemoteFlowSourceAsSource extends Source {
-    RemoteFlowSourceAsSource() { this instanceof RemoteFlowSource }
-
+  private class RemoteFlowSourceAsSource extends Source instanceof RemoteFlowSource {
     override DataFlow::FlowLabel getAFlowLabel() { result.isTaint() }
   }
 
@@ -51,7 +47,7 @@ module TemplateObjectInjection {
       exists(
         Express::RouteSetup setup, Express::RouterDefinition router, Express::RouterDefinition top
       |
-        setup.getARouteHandler() = getRouteHandler() and
+        setup.getARouteHandler() = this.getRouteHandler() and
         setup.getRouter() = router and
         top.getASubRouter*() = router and
         usesVulnerableTemplateEngine(top)

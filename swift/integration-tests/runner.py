@@ -34,12 +34,17 @@ def execute_test(path):
     return subprocess.run([sys.executable, "-u", path.name], cwd=path.parent).returncode == 0
 
 def skipped(test):
-    return platform.system() != "Darwin" and "osx-only" in test.parts
+    if platform.system() == "Darwin":
+        return "linux-only" in test.parts
+    else:
+        return "osx-only" in test.parts
 
 
 def main(opts):
     test_dirs = opts.test_dir or [this_dir]
     tests = [t for d in test_dirs for t in d.rglob("test.py") if not skipped(t)]
+    if opts.learn:
+        os.environ["CODEQL_INTEGRATION_TEST_LEARN"] = "true"
 
     if not tests:
         print("No tests found", file=sys.stderr)

@@ -32,13 +32,6 @@ module CommandInjection {
   abstract class Sanitizer extends DataFlow::Node { }
 
   /**
-   * DEPRECATED: Use `Sanitizer` instead.
-   *
-   * A sanitizer guard for "command injection" vulnerabilities.
-   */
-  abstract deprecated class SanitizerGuard extends DataFlow::BarrierGuard { }
-
-  /**
    * A source of remote user input, considered as a flow source.
    */
   class RemoteFlowSourceAsSource extends Source, RemoteFlowSource { }
@@ -76,6 +69,9 @@ module CommandInjection {
       // `subprocess`. See:
       // https://github.com/python/cpython/blob/fa7ce080175f65d678a7d5756c94f82887fc9803/Lib/os.py#L974
       // https://github.com/python/cpython/blob/fa7ce080175f65d678a7d5756c94f82887fc9803/Lib/subprocess.py#L341
+      //
+      // The same approach is used in the path-injection, cleartext-storage, and
+      // cleartext-logging queries.
       not this.getScope().getEnclosingModule().getName() in [
           "os", "subprocess", "platform", "popen2"
         ]

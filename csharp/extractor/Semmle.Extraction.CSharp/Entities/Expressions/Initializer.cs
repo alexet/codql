@@ -1,9 +1,9 @@
+using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Semmle.Extraction.Entities;
+using Semmle.Util;
 using Semmle.Extraction.Kinds;
-using System.IO;
 
 namespace Semmle.Extraction.CSharp.Entities.Expressions
 {
@@ -146,11 +146,7 @@ namespace Semmle.Extraction.CSharp.Entities.Expressions
 
                     var init = (InitializerExpressionSyntax)i;
 
-                    var addChild = 0;
-                    foreach (var arg in init.Expressions)
-                    {
-                        Create(Context, arg, invocation, addChild++);
-                    }
+                    init.Expressions.ForEach((arg, child) => Create(Context, arg, invocation, child));
                 }
                 else
                 {

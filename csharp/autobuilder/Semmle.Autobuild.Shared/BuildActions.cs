@@ -1,20 +1,35 @@
-﻿using Semmle.Util;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Xml;
-using System.Net.Http;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading.Tasks;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Xml;
+using Semmle.Util;
 
 namespace Semmle.Autobuild.Shared
 {
+    public delegate void BuildOutputHandler(string? data);
+
     /// <summary>
     /// Wrapper around system calls so that the build scripts can be unit-tested.
     /// </summary>
     public interface IBuildActions
     {
+
+        /// <summary>
+        /// Runs a process, captures its output, and provides it asynchronously.
+        /// </summary>
+        /// <param name="exe">The exe to run.</param>
+        /// <param name="args">The other command line arguments.</param>
+        /// <param name="workingDirectory">The working directory (<code>null</code> for current directory).</param>
+        /// <param name="env">Additional environment variables.</param>
+        /// <param name="onOutput">A handler for stdout output.</param>
+        /// <param name="onError">A handler for stderr output.</param>
+        /// <returns>The process exit code.</returns>
+        int RunProcess(string exe, string args, string? workingDirectory, IDictionary<string, string>? env, BuildOutputHandler onOutput, BuildOutputHandler onError);
+
         /// <summary>
         /// Runs a process and captures its output.
         /// </summary>
@@ -99,6 +114,18 @@ namespace Semmle.Autobuild.Shared
         bool IsWindows();
 
         /// <summary>
+        /// Gets a value indicating whether we are running on macOS.
+        /// </summary>
+        /// <returns>True if we are running on macOS.</returns>
+        bool IsMacOs();
+
+        /// <summary>
+        /// Gets a value indicating whether we are running on Apple Silicon.
+        /// </summary>
+        /// <returns>True if we are running on Apple Silicon.</returns>
+        bool IsRunningOnAppleSilicon();
+
+        /// <summary>
         /// Combine path segments, Path.Combine().
         /// </summary>
         /// <param name="parts">The parts of the path.</param>
@@ -139,6 +166,17 @@ namespace Semmle.Autobuild.Shared
         /// Downloads the resource with the specified URI to a local file.
         /// </summary>
         void DownloadFile(string address, string fileName);
+
+        /// <summary>
+        /// Creates an <see cref="IDiagnosticsWriter" /> for the given <paramref name="filename" />.
+        /// </summary>
+        /// <param name="filename">
+        /// The path suggesting where the diagnostics should be written to.
+        /// </param>
+        /// <returns>
+        /// A <see cref="IDiagnosticsWriter" /> to which diagnostic entries can be added.
+        /// </returns>
+        IDiagnosticsWriter CreateDiagnosticsWriter(string filename);
     }
 
     /// <summary>
@@ -150,41 +188,39 @@ namespace Semmle.Autobuild.Shared
 
         bool IBuildActions.FileExists(string file) => File.Exists(file);
 
-        private static ProcessStartInfo GetProcessStartInfo(string exe, string arguments, string? workingDirectory, IDictionary<string, string>? environment, bool redirectStandardOutput)
+        private static ProcessStartInfo GetProcessStartInfo(string exe, string arguments, string? workingDirectory, IDictionary<string, string>? environment)
         {
             var pi = new ProcessStartInfo(exe, arguments)
             {
                 UseShellExecute = false,
-                RedirectStandardOutput = redirectStandardOutput
+                RedirectStandardOutput = true
             };
             if (workingDirectory is not null)
                 pi.WorkingDirectory = workingDirectory;
 
-            // Environment variables can only be used when not redirecting stdout
-            if (!redirectStandardOutput)
-            {
-                if (environment is not null)
-                    environment.ForEach(kvp => pi.Environment[kvp.Key] = kvp.Value);
-            }
+            environment?.ForEach(kvp => pi.Environment[kvp.Key] = kvp.Value);
+
             return pi;
+        }
+
+        int IBuildActions.RunProcess(string exe, string args, string? workingDirectory, System.Collections.Generic.IDictionary<string, string>? env, BuildOutputHandler onOutput, BuildOutputHandler onError)
+        {
+            var pi = GetProcessStartInfo(exe, args, workingDirectory, env);
+            pi.RedirectStandardError = true;
+
+            return pi.ReadOutput(out _, onOut: s => onOutput(s), onError: s => onError(s));
         }
 
         int IBuildActions.RunProcess(string cmd, string args, string? workingDirectory, IDictionary<string, string>? environment)
         {
-            var pi = GetProcessStartInfo(cmd, args, workingDirectory, environment, false);
-            using var p = Process.Start(pi);
-            if (p is null)
-            {
-                return -1;
-            }
-            p.WaitForExit();
-            return p.ExitCode;
+            var pi = GetProcessStartInfo(cmd, args, workingDirectory, environment);
+            return pi.ReadOutput(out _, onOut: Console.WriteLine, onError: null);
         }
 
         int IBuildActions.RunProcess(string cmd, string args, string? workingDirectory, IDictionary<string, string>? environment, out IList<string> stdOut)
         {
-            var pi = GetProcessStartInfo(cmd, args, workingDirectory, environment, true);
-            return pi.ReadOutput(out stdOut);
+            var pi = GetProcessStartInfo(cmd, args, workingDirectory, environment);
+            return pi.ReadOutput(out stdOut, onOut: null, onError: null);
         }
 
         void IBuildActions.DirectoryDelete(string dir, bool recursive) => Directory.Delete(dir, recursive);
@@ -202,6 +238,28 @@ namespace Semmle.Autobuild.Shared
         IEnumerable<string> IBuildActions.EnumerateDirectories(string dir) => Directory.EnumerateDirectories(dir);
 
         bool IBuildActions.IsWindows() => Win32.IsWindows();
+
+        bool IBuildActions.IsMacOs() => RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
+        bool IBuildActions.IsRunningOnAppleSilicon()
+        {
+            var thisBuildActions = (IBuildActions)this;
+
+            if (!thisBuildActions.IsMacOs())
+            {
+                return false;
+            }
+
+            try
+            {
+                thisBuildActions.RunProcess("sysctl", "machdep.cpu.brand_string", workingDirectory: null, env: null, out var stdOut);
+                return stdOut?.Any(s => s?.ToLowerInvariant().Contains("apple") == true) ?? false;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
 
         string IBuildActions.PathCombine(params string[] parts) => Path.Combine(parts);
 
@@ -222,17 +280,10 @@ namespace Semmle.Autobuild.Shared
 
         public string EnvironmentExpandEnvironmentVariables(string s) => Environment.ExpandEnvironmentVariables(s);
 
-        private static async Task DownloadFileAsync(string address, string filename)
-        {
-            using var httpClient = new HttpClient();
-            using var request = new HttpRequestMessage(HttpMethod.Get, address);
-            using var contentStream = await (await httpClient.SendAsync(request)).Content.ReadAsStreamAsync();
-            using var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
-            await contentStream.CopyToAsync(stream);
-        }
-
         public void DownloadFile(string address, string fileName) =>
-            DownloadFileAsync(address, fileName).Wait();
+            FileUtils.DownloadFile(address, fileName);
+
+        public IDiagnosticsWriter CreateDiagnosticsWriter(string filename) => new DiagnosticsStream(filename);
 
         public static IBuildActions Instance { get; } = new SystemBuildActions();
     }
