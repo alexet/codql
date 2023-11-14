@@ -104,7 +104,6 @@ module MergeSort<Type T, Comparator<T> C, List<T> L> {
     i = inputListInIter(iter) / 2 and inputListInIter(iter) % 2 != 0
   }
 
-  pragma[assume_small_delta]
   pragma[nomagic]
   T lhsAtIter(int iter, int listIndex, int resultIndex) {
     exists(int lhsIndex |
@@ -113,7 +112,6 @@ module MergeSort<Type T, Comparator<T> C, List<T> L> {
     )
   }
 
-  pragma[assume_small_delta]
   pragma[nomagic]
   T rhsAtIter(int iter, int listIndex, int resultIndex) {
     exists(int rhsIndex |
@@ -122,7 +120,6 @@ module MergeSort<Type T, Comparator<T> C, List<T> L> {
     )
   }
 
-  pragma[assume_small_delta]
   pragma[nomagic]
   private predicate iter(int iter, int listIndex, int resultIndex, int lhsIndex, int rhsIndex) {
     resultIndex = 0 and lhsIndex = 0 and rhsIndex = 0 and iterBothIndex(iter, listIndex)
@@ -165,7 +162,6 @@ module MergeSort<Type T, Comparator<T> C, List<T> L> {
     listId = (totalLen() / desiredLen) and result = (totalLen() % desiredLen) and result != 0
   }
 
-  pragma[assume_small_delta]
   pragma[nomagic]
   private T listIter(int iter, int listIndex, int resultIndex) {
     exists(T a, T b |
