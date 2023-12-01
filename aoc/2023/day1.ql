@@ -19,15 +19,24 @@ module Impl<inStr/0 input> {
         n = 9 and result = "nine"
     }
 
-    int digitAt(int n, int k) {
+    int digitAtP1(int n, int k) {
+        result = lines(n).charAt(k).toInt() 
+    }
+
+    int digitAtP2(int n, int k) {
         result = lines(n).charAt(k).toInt() or
         lines(n).indexOf(textNumber(result)) = k
     }
 
 
-    int digits() {
-        result = sum(int n | | min(int k | |digitAt(n, k) order by k) * 10 + 
-                    max(int k | | digitAt(n, k) order by k))
+    int digitsP1() {
+        result = sum(int n | | min(int k | |digitAtP1(n, k) order by k) * 10 + 
+                    max(int k | | digitAtP1(n, k) order by k))
+    }
+
+    int digitsP2() {
+        result = sum(int n | | min(int k | |digitAtP2(n, k) order by k) * 10 + 
+                    max(int k | | digitAtP2(n, k) order by k))
     }
 
 
@@ -51,4 +60,4 @@ module TestImpl2 = Impl<testInput2/0>;
 
 module RealImpl = Impl<realInput/0>;
 
-select RealImpl::digits()
+select RealImpl::digitsP1(), RealImpl::digitsP2()
