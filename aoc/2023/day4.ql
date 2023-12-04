@@ -25,10 +25,7 @@ module Impl<inStr/0 input> {
 
   int totalScore() { result = sum(int i | | score(i)) }
 
-
-  int maxWinning() {
-    result = max(matchCount(_))
-  }
+  int maxWinning() { result = max(matchCount(_)) }
 
   int candWinning(int i) {
     exists(cards(i)) and
@@ -37,11 +34,7 @@ module Impl<inStr/0 input> {
 
   int pushScore(int i, int j) {
     j = candWinning(i) and
-    if matchCount(j) + j >= i
-    then result = cardCount(j)
-    else 
-      result = 0
-    
+    if matchCount(j) + j >= i then result = cardCount(j) else result = 0
   }
 
   language[monotonicAggregates]
