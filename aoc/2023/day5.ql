@@ -27,12 +27,13 @@ module Impl<inStr/0 input> {
     )
   }
 
-  predicate rankedMapping(int n, int k, float targetStart, float sourceStart, float len) {
-    sourceStart = rank[k](float otherStart | resolvedMapping(n, _, otherStart, _)) and
-    resolvedMapping(n, targetStart, sourceStart, len)
+  predicate resolvedMapping2(int n, float sourceStart, float sourceEnd, float offset) {
+    exists(int x |
+      sourceEnd = sourceStart + mapElem(n, x, 2) and
+      sourceStart = mapElem(n, x, 1) and
+      offset = mapElem(n, x, 0) - mapElem(n, x, 1)
+    )
   }
-
-  int maxK(int n) { result = max(int k | rankedMapping(n, k, _, _, _)) }
 
   bindingset[source]
   predicate complexMapping(int n, float source, float target) {
@@ -74,40 +75,28 @@ module Impl<inStr/0 input> {
     )
   }
 
+  import floatRange
+
+  module IntersectInput implements IndexedRangeList {
+    class Key = int;
+
+    class Value = float;
+
+    predicate isRange = resolvedMapping2/4;
+  }
+
+  module Intersected = IntersectRangeList<IntersectInput>;
+
   bindingset[rangeStart, rangeEnd]
-  predicate mapRange(int n, float rangeStart, float rangeEnd, float newStart, float newEnd) {
-    exists(float firstMappingStart |
-      rankedMapping(n, 1, _, firstMappingStart, _) and
-      rangeStart < firstMappingStart and
-      newStart = rangeStart and
-      newEnd = firstMappingStart.minimum(rangeEnd)
-    )
+  predicate mapRange2(int n, float rangeStart, float rangeEnd, float newStart, float newEnd) {
+    Intersected::notIntersection(n, rangeStart, rangeEnd, newStart, newEnd)
     or
-    exists(float mappingStart, float mappingLen, float mappingTarget |
-      rankedMapping(n, _, mappingTarget, mappingStart, mappingLen) and
-      newStart = mappingStart.maximum(rangeStart) - mappingStart + mappingTarget and
-      newEnd = (mappingStart + mappingLen).minimum(rangeEnd) - mappingStart + mappingTarget and
-      newEnd > newStart
-    )
-    or
-    exists(int k, float prevLen, float prevStart, float gapStart, float gapEnd |
-      rankedMapping(n, k, _, prevStart, prevLen) and
-      gapStart = prevStart + prevLen and
-      rankedMapping(n, k + 1, _, gapEnd, _) and
-      newStart = gapStart.maximum(rangeStart) and
-      newEnd = gapEnd.minimum(rangeEnd) and
-      newEnd > newStart
-    )
-    or
-    exists(float lastMappingStart, float lastMappingEnd, float lastMappingLen |
-      rankedMapping(n, maxK(n), _, lastMappingStart, lastMappingLen) and
-      lastMappingEnd = lastMappingStart + lastMappingLen and
-      rangeEnd > lastMappingEnd and
-      newEnd = rangeEnd and
-      newStart = lastMappingEnd.maximum(rangeStart)
+    exists(float matchStart, float matchEnd, float offset |
+      Intersected::intersection(n, rangeStart, rangeEnd, matchStart, matchEnd, offset) and
+      offSetRange(matchStart, matchEnd, offset, newStart, newEnd)
     )
   }
-  
+
   predicate seedRange(float start, float end) {
     exists(int n |
       exists(seedPart(n)) and
@@ -122,7 +111,7 @@ module Impl<inStr/0 input> {
     exists(string midKind, float midStart, float midEnd, int n |
       mapKind(n, midKind, kind) and
       partRange(midKind, midStart, midEnd) and
-      mapRange(n, midStart, midEnd, rangeStart, rangeEnd)
+      mapRange2(n, midStart, midEnd, rangeStart, rangeEnd)
     )
   }
 
