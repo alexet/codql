@@ -34,13 +34,21 @@ module IntersectRangeList<IndexedRangeList Input> {
     isRange(k, start, end, value)
   }
 
-  private float maxIndex(Key k) { result = max(float index | rankedRanges(k, index, _, _, _)) }
+  private int maxIndex(Key k) { result = max(float index | rankedRanges(k, index, _, _, _)) }
 
   bindingset[start, end]
   predicate intersection(Key k, float start, float end, float rStart, float rEnd, Value value) {
     exists(float mappingStart, float mappingEnd |
       rankedRanges(k, _, mappingStart, mappingEnd, value) and
       intersectRange(mappingStart, mappingEnd, start, end, rStart, rEnd)
+    )
+  }
+
+  predicate isGap(Key k, float start, float end) {
+    exists(int index |
+      rankedRanges(k, index, _, start, _) and
+      rankedRanges(k, index + 1, end, _, _) and
+      start < end
     )
   }
 
@@ -60,10 +68,9 @@ module IntersectRangeList<IndexedRangeList Input> {
       rEnd = end
     )
     or
-    exists(float index, float prevEnd, float nextStart |
-      rankedRanges(k, index, _, prevEnd, _) and
-      rankedRanges(k, index + 1, nextStart, _, _) and
-      intersectRange(prevEnd, nextStart, start, end, rStart, rEnd)
+    exists(float gapStart, float gapEnd |
+      isGap(k, gapStart, gapEnd) and
+      intersectRange(gapStart, gapEnd, start, end, rStart, rEnd)
     )
   }
 }
