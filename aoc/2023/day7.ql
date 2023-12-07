@@ -32,29 +32,29 @@ module Impl<inStr/0 input> {
       exists(hand(n)) and
       result = count(string card | cardCountsNonJ(n, card) != 0)
     }
+    
+    int maxCount(int n) { result = max(cardCountsNonJ(n, _) + jokers(n)) }
 
-    predicate is5Kind(int n) {
-      cardCountsNonJ(n, _) + jokers(n) = 5 or
-      jokers(n) = 5
+    predicate is5Kind(int n) { cardKinds(n) in [0, 1] }
+
+    predicate is4Kind(int n) {
+      cardKinds(n) = 2 and
+      maxCount(n) = 4
     }
 
-    predicate is4Kind(int n) { cardCountsNonJ(n, _) + jokers(n) = 4 }
-
     predicate isFullHouse(int n) {
-      not is4Kind(n) and
+      maxCount(n) = 3 and
       cardKinds(n) = 2
     }
 
     predicate is3Kind(int n) {
-      not is4Kind(n) and
       cardKinds(n) = 3 and
       // Some card that makes 3
-      cardCountsNonJ(n, _) + jokers(n) = 3
+      maxCount(n) = 3
     }
 
     predicate is2Pair(int n) {
-      not is4Kind(n) and
-      not is3Kind(n) and
+      maxCount(n) = 2 and
       cardKinds(n) = 3
     }
 
