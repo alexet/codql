@@ -32,7 +32,7 @@ module Impl<inStr/0 input> {
       exists(hand(n)) and
       result = count(string card | cardCountsNonJ(n, card) != 0)
     }
-    
+
     int maxCount(int n) { result = max(cardCountsNonJ(n, _) + jokers(n)) }
 
     predicate is5Kind(int n) { cardKinds(n) in [0, 1] }
@@ -79,19 +79,7 @@ module Impl<inStr/0 input> {
     }
 
     int cardRank(string s) {
-      result = [2 .. 9] and
-      s = result.toString()
-      or
-      s = "T" and result = 10
-      or
-      s = "J" and
-      if hasJokers() then result = 1 else result = 11
-      or
-      s = "Q" and result = 12
-      or
-      s = "K" and result = 13
-      or
-      s = "A" and result = 14
+      if hasJokers() then s = "J23456789TQKA".charAt(result) else s = "23456789TJQKA".charAt(result)
     }
 
     int handRank(int n2) {
